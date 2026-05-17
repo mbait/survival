@@ -1,0 +1,22 @@
+# Normalize line endings: store everything as LF in the repo; Git checks
+# CRLF out on Windows when the user wants it via core.autocrlf, but the
+# canonical form on disk and in diffs is LF.
+* text=auto eol=lf
+
+# Binary assets — never touch.
+*.tga binary
+*.jpg binary
+*.png binary
+*.dat binary
+*.m2d binary
+*.m2d_texture_* binary
+*.ttf binary
+*.otf binary
+*.exe binary
+*.lib binary
+*.dll binary
+*.so binary
+*.pdb binary
+*.rar binary
+*.zip binary
+*.7z binary
