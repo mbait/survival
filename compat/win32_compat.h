@@ -13,6 +13,7 @@
 // Real Win32 build: rely on the SDK headers, not these shims.
 #else
 
+#include <chrono>
 #include <cstdint>
 
 using BYTE     = std::uint8_t;
@@ -34,6 +35,17 @@ constexpr HRESULT E_FAIL = -1;
 #ifndef D3DX_PI
 #define D3DX_PI 3.14159265358979323846f
 #endif
+
+// Millisecond tick count, matching Win32 GetTickCount() semantics
+// (monotonic, wraps at 2^32 ms ~= 49 days — same as the original). Uses
+// std::chrono::steady_clock so the shim layer has no SDL dependency.
+inline DWORD GetTickCount()
+{
+    using namespace std::chrono;
+    return static_cast<DWORD>(
+        duration_cast<milliseconds>(
+            steady_clock::now().time_since_epoch()).count());
+}
 
 #endif // !_WIN32
 
