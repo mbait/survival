@@ -11,6 +11,4 @@ extern int  g_iAALevel;
 extern bool	g_bFullScreen;
 extern char g_szMapName[1024];
 
-extern byte keys[256];
-
 #endif

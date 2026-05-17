@@ -3,8 +3,7 @@
 
 #include <stdio.h>
 #include <list>
-#include <dinput.h>
-#include <dxerr9.h>
+#include "compat/win32_compat.h"
 //#include "physics/physics2D.h"
 #include "graphics/model.h"
 #include "physics/physics2D.h"
@@ -13,10 +12,13 @@
 
 using namespace std;
 
+// Linker dependencies are handled by CMake on Linux; the #pragma comment
+// directives are MSVC-only and silently ignored elsewhere. Kept gated so
+// a future Windows MSVC build still picks them up.
+#ifdef _MSC_VER
 #pragma comment(lib, "d3d9.lib")
 #pragma comment(lib, "d3dx9.lib")
-#pragma comment(lib, "dxerr9.lib")
-#pragma comment(lib, "dinput8.lib")
+#endif
 
 #define D3DFVF_TEXTUREVERTEX (D3DFVF_XYZRHW|D3DFVF_TEX1)
 #define D3DFVF_COLORVERTEX   (D3DFVF_XYZRHW|D3DFVF_DIFFUSE)
@@ -214,7 +216,7 @@ struct PLAYER
 	int		health;
 	int		ammo[NUMWEAPONS];
 
-	HRESULT Init(LPDIRECT3DDEVICE9 pDevice,
+	HRESULT Init(SDL_Renderer* pRenderer,
 				 const char* szModelFileName,
 				 const char* szBodyFilename,
 				 const char* szRagDollDir);
@@ -231,15 +233,16 @@ struct NODE
 
 inline DWORD FtoDW( FLOAT f ) { return *((DWORD*)&f); }
 
-HRESULT InitD3D(HWND hwndParent);
+// Forward declarations of the game's lifecycle entry points. After the
+// SDL port (Phase 1g/1h/1k) the renderer/window come from the platform
+// layer instead of HWND/HINSTANCE.
+struct SDL_Window;
+struct SDL_Renderer;
+
+HRESULT InitGfx(SDL_Window* window, SDL_Renderer* renderer);
 HRESULT ShowSplash();
-HRESULT InitDI(HWND hwndParent, HINSTANCE hInstance);
-HRESULT RestoreD3D();
-HRESULT RestoreDI();
 HRESULT LoadGameData();
-HRESULT	LoadMap(const char *szFileName);
+HRESULT LoadMap(const char* szFileName);
 HRESULT UpdateScene(DWORD dwTime);
 HRESULT UpdateFrame();
-
-void ErrorMessage(HWND hwndParent, HRESULT hr);
-void Cleanup();
+void    Cleanup();

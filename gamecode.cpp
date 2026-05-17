@@ -1,6 +1,7 @@
 
 
 #include "gamecode.h"
+#include <SDL.h>
 
 //#define DEBUG
 //#define GODMODE
@@ -44,9 +45,9 @@ LPD3DXLINE g_pLine;
 LPD3DXFONT g_pSysFont;
 LPD3DXFONT g_pUIFont;
 
-LPDIRECTINPUT8 g_pDI;
-LPDIRECTINPUTDEVICE8 g_pKeyboard;
-LPDIRECTINPUTDEVICE8 g_pMouse;
+// Input migrated to SDL — keyboard state is read directly from
+// SDL_GetKeyboardState in UpdateScene, mouse state from
+// SDL_GetRelativeMouseState. No persistent device handles needed.
 
 MATERIAL g_aMaterials[MAX_MATERIALS];
 const char *g_szMaterialFile[MAX_MATERIALS] = 
@@ -179,7 +180,7 @@ void AddCustomParticles(VECTOR2D vPoint, VECTOR2D vNormal, COLOR color)
 	}
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-HRESULT PLAYER::Init(LPDIRECT3DDEVICE9 pDevice,
+HRESULT PLAYER::Init(SDL_Renderer* pRenderer,
 					 const char *szModelFileName,
 					 const char *szBodyFileName,
 					 const char *szRagDollDir)
@@ -1012,43 +1013,36 @@ void CalcPhysics(DWORD dwTime)
 HRESULT UpdateScene(DWORD dwTime)
 {
 	//===================read keyboard state====================//
-	//get keyboard state
-	unsigned char keystate[256];
-	memset(keystate, 0, sizeof(keystate));
-	bool keypressed[256];
-	memset(keypressed, false, sizeof(keypressed));
-	HRESULT hr;
-	//get device data
-	hr = g_pKeyboard->GetDeviceState(sizeof(keystate), (LPVOID)keystate);
-	if(FAILED(hr))
-		return hr;
-	for(int i=0; i<256; i++)
-		keypressed[i] = keystate[i]&0x80;
-	
+	// SDL keeps a single keyboard state vector internally; SDL_PumpEvents
+	// in the main loop refreshes it. SDL_GetKeyboardState returns a
+	// pointer into that buffer indexed by SDL_SCANCODE_*.
+	const Uint8* keystate = SDL_GetKeyboardState(nullptr);
+	HRESULT hr = S_OK;
+
 	bool actions[NUMACTIONS];
 	memset(actions, 0, sizeof(actions));
-    
+
 	//resolve keyboard state
-	if(keypressed[DIK_A])
+	if(keystate[SDL_SCANCODE_A])
 	{
 		m_aPlayers[0].dir = LEFT;
 		actions[MOVELEFT] = true;
 	}
-	if(keypressed[DIK_D])
+	if(keystate[SDL_SCANCODE_D])
 	{
 		m_aPlayers[0].dir = RIGHT;
-		actions[MOVERIGHT] = true;		
+		actions[MOVERIGHT] = true;
 	}
-	if(keypressed[DIK_W])
+	if(keystate[SDL_SCANCODE_W])
 	{
 		actions[JUMP] = true;
 	}
-	if(keypressed[DIK_Q])
+	if(keystate[SDL_SCANCODE_Q])
 		actions[WJUMP] = true;
 
 	//none-control keystate
-	if(keypressed[DIK_INSERT])
-	{		
+	if(keystate[SDL_SCANCODE_INSERT])
+	{
 		if(g_bAddKeyOnce && g_iNumPlayers<MAX_PLAYERS)
 		{
 			hr = AddPlayer();
@@ -1058,7 +1052,7 @@ HRESULT UpdateScene(DWORD dwTime)
 	else
 		g_bAddKeyOnce = true;
 
-	if(keypressed[DIK_DELETE])
+	if(keystate[SDL_SCANCODE_DELETE])
 	{
 		if(g_bRemoveKeyOnce && g_iNumPlayers>1)
 		{
@@ -1069,26 +1063,26 @@ HRESULT UpdateScene(DWORD dwTime)
 	else
 		g_bRemoveKeyOnce = true;
 
-	if(keypressed[DIK_TAB])
+	if(keystate[SDL_SCANCODE_TAB])
 		g_bShowStat = true;
 	else
 		g_bShowStat = false;
 
 	//=========================read mouse state=========================//
-	DIMOUSESTATE mousestate;
-	hr = g_pMouse->GetDeviceState(sizeof(DIMOUSESTATE),
-		(LPVOID)&mousestate);
-	if(FAILED(hr))
-		return hr;
-	
-	if(mousestate.rgbButtons[0]&0x80)
-        actions[SHOOT] = true;
-	if(mousestate.rgbButtons[1]&0x80)
-        actions[ALTSHOOT] = true;
+	// Relative-mouse mode is enabled by the platform layer at start-up;
+	// each call returns motion accumulated since the last call.
+	int mouse_dx = 0;
+	int mouse_dy = 0;
+	const Uint32 buttons = SDL_GetRelativeMouseState(&mouse_dx, &mouse_dy);
+
+	if(buttons & SDL_BUTTON(SDL_BUTTON_LEFT))
+		actions[SHOOT] = true;
+	if(buttons & SDL_BUTTON(SDL_BUTTON_RIGHT))
+		actions[ALTSHOOT] = true;
 
 	//update cursor pos
-	g_cursor.x = (g_cursor.x+mousestate.lX);
-	g_cursor.y = (g_cursor.y+mousestate.lY);
+	g_cursor.x = (g_cursor.x+mouse_dx);
+	g_cursor.y = (g_cursor.y+mouse_dy);
 	//clip x
 	if(g_cursor.x>MOUSE_MAX_X)
 		g_cursor.x = MOUSE_MAX_X;
@@ -2152,26 +2146,13 @@ HRESULT LoadMap(const char* szFileName)
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 void Cleanup()
 {
-	if(g_pKeyboard)
-	{
-		g_pKeyboard->Unacquire();
-		g_pKeyboard->Release();
-	}
+	// Input devices owned by the SDL platform layer — nothing to release here.
 
-	if(g_pMouse)
-	{
-		g_pMouse->Unacquire();
-		g_pMouse->Release();
-	}
-	
 	if(g_pSysFont)
 		g_pSysFont->Release();
 
 	if(g_pUIFont)
 		g_pUIFont->Release();
-	
-	if(g_pDI)
-		g_pDI->Release();
 
 	if(g_pFireTexture)
 		g_pFireTexture->Release();
@@ -2528,49 +2509,6 @@ HRESULT InitD3D(HWND hwndParent)
 	return S_OK;
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-HRESULT InitDI(HWND hwndParent, HINSTANCE hInstance)
-{
-	g_pDI = 0;
-	g_pKeyboard = 0;
-	g_pMouse = 0;
-	
-	HRESULT hr;
-	hr = DirectInput8Create(hInstance, DIRECTINPUT_VERSION,
-			IID_IDirectInput8, (void**)&g_pDI, NULL);
-	if(FAILED(hr))
-		return hr;
-
-	hr = g_pDI->CreateDevice(GUID_SysKeyboard, &g_pKeyboard,
-			NULL);
-	if(FAILED(hr))
-		return hr;
-
-	hr = g_pDI->CreateDevice(GUID_SysMouse, &g_pMouse,
-			NULL);
-	if(FAILED(hr))
-		return hr;
-
-	hr = g_pKeyboard->SetCooperativeLevel(hwndParent, 
-			DISCL_FOREGROUND|DISCL_NONEXCLUSIVE);
-	if(FAILED(hr))
-		return hr;
-
-	hr = g_pMouse->SetCooperativeLevel(hwndParent, 
-			DISCL_FOREGROUND|DISCL_NONEXCLUSIVE);
-	if(FAILED(hr))
-		return hr;
-	
-	g_pKeyboard->SetDataFormat(&c_dfDIKeyboard);
-	g_pMouse->SetDataFormat(&c_dfDIMouse);
-	
-	if(FAILED(hr = g_pKeyboard->Acquire()))
-		return hr;
-	if(FAILED(hr = g_pMouse->Acquire()))
-		return hr;
-
-	return S_OK;
-}
-///////////////////////////////////////////////////////////////////////////////////////////////////
 HRESULT RestoreD3D()
 {
 	HRESULT hr;
@@ -2640,17 +2578,6 @@ HRESULT ShowSplash()
 	return S_OK;
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-HRESULT RestoreDI()
-{
-	HRESULT hr;
-
-	hr = g_pKeyboard->Acquire();
-	if(FAILED(hr))
-		return hr;
-
-	return g_pMouse->Acquire();
-}
-///////////////////////////////////////////////////////////////////////////////////////////////////
 int ScoreCmp(const void* arg_1, const void* arg_2)
 {
 	int a = *(int*)arg_1;
@@ -2670,10 +2597,4 @@ int ScoreCmp(const void* arg_1, const void* arg_2)
 			return 0;
 	}
 }
-///////////////////////////////////////////////////////////////////////////////////////////////////
-void ErrorMessage(HWND hwndParent, HRESULT hr)
-{
-	ShowCursor(SW_SHOW);
-	ShowWindow(hwndParent, SW_HIDE);
-	MessageBox(hwndParent, DXGetErrorDescription9(hr), "Error", MB_OK|MB_ICONHAND);	
-}
+
