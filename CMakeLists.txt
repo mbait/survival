@@ -42,19 +42,21 @@ endif()
 # ---------------------------------------------------------------------------
 # Game target
 # ---------------------------------------------------------------------------
-# Source list grows as Phase 1 progresses. Each Phase 1 step adds/removes
-# entries here; the build is expected to remain broken until 1m.
+# Source list grows as Phase 1 progresses — each step adds the file(s) it
+# ports. The intermediate builds are kept clean (linker-clean, runnable)
+# at every commit; sources still tied to Win32/DX live on disk but are
+# not yet compiled.
 add_executable(game
-    # platform/main_sdl.cpp       # Phase 1e
-    # platform/read_ini.cpp       # Phase 1f
-    # platform/font_cache.cpp     # Phase 1k
-    gamecode.cpp
-    object.cpp
-    graphics/sprite2.cpp
-    graphics/model.cpp
-    graphics/particles.cpp
-    physics/math2D.cpp
-    physics/physics2D.cpp
+    platform/main_sdl.cpp        # Phase 1e
+    # platform/read_ini.cpp      # Phase 1f
+    # platform/font_cache.cpp    # Phase 1k
+    # gamecode.cpp               # Phase 1g/1h/1k/1l
+    # object.cpp                 # Phase 1k
+    # graphics/sprite2.cpp       # Phase 1i
+    # graphics/model.cpp         # Phase 1j
+    # graphics/particles.cpp     # Phase 1j
+    # physics/math2D.cpp         # Phase 1l (compiles unchanged, just gated)
+    # physics/physics2D.cpp      # Phase 1l
 )
 
 target_include_directories(game PRIVATE
