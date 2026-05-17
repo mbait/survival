@@ -1,193 +1,179 @@
-
 #include "sprite2.h"
 
-SPRITE::SPRITE()
+#include <SDL_image.h>
+
+namespace {
+
+constexpr float kRadToDeg = 57.295779513082320876f;  // 180 / pi
+
+// SDL_RenderCopyEx rotates clockwise in screen space (Y down); the
+// legacy code treats positive Z-rotation as CCW in math convention. In
+// screen space those agree (Y is flipped), so the angle goes through
+// unmodified — verify visually during Phase 2 reference matching.
+inline double to_sdl_angle_deg(float angle_rad)
 {
-	pSprite = 0;
-	pTexture = 0;
-
-	fxPos = 0.0f; 
-	fyPos = 0.0f;
-	fRotation = 0.0f;
-	fScale = 1.0f;
-
-	fRotationX = 0.0f;
-	fRotationY = 0.0f;
-
-	iOrientation = 0;
-
-	iWidth = 0;
-	iHeight = 0;
+    return static_cast<double>(angle_rad) * kRadToDeg;
 }
+
+// Build the SDL destination rect + rotation center for a sprite of size
+// (w,h) drawn so that its local pivot point lands at world (px,py).
+void compose_dst(float px, float py,
+                 float pivot_x, float pivot_y,
+                 int   w,       int   h,
+                 float scale,
+                 SDL_Rect& out_dst, SDL_Point& out_center)
+{
+    const float scaled_w     = w * scale;
+    const float scaled_h     = h * scale;
+    const float scaled_pivot_x = pivot_x * scale;
+    const float scaled_pivot_y = pivot_y * scale;
+
+    out_dst.x = static_cast<int>(px - scaled_pivot_x);
+    out_dst.y = static_cast<int>(py - scaled_pivot_y);
+    out_dst.w = static_cast<int>(scaled_w);
+    out_dst.h = static_cast<int>(scaled_h);
+
+    out_center.x = static_cast<int>(scaled_pivot_x);
+    out_center.y = static_cast<int>(scaled_pivot_y);
+}
+
+HRESULT finish_init(SDL_Renderer* renderer, SDL_Texture* tex,
+                    SDL_Texture*& out_tex, SDL_Renderer*& out_renderer,
+                    int& out_w, int& out_h,
+                    float& out_pivot_x, float& out_pivot_y)
+{
+    if (!tex) {
+        return E_FAIL;
+    }
+    int w = 0;
+    int h = 0;
+    if (SDL_QueryTexture(tex, nullptr, nullptr, &w, &h) != 0) {
+        SDL_DestroyTexture(tex);
+        return E_FAIL;
+    }
+    out_tex      = tex;
+    out_renderer = renderer;
+    out_w        = w;
+    out_h        = h;
+    out_pivot_x  = w / 2.0f;
+    out_pivot_y  = h / 2.0f;
+    return S_OK;
+}
+
+}  // namespace
 
 SPRITE::~SPRITE()
 {
-	if(pSprite)
-		pSprite->Release();
-	if(pTexture)
-		pTexture->Release();
+    if (pTexture) {
+        SDL_DestroyTexture(pTexture);
+        pTexture = nullptr;
+    }
 }
 
-HRESULT SPRITE::Init(LPDIRECT3DDEVICE9 &pDevice, const char* szFileName)
+HRESULT SPRITE::Init(SDL_Renderer* renderer, const char* szFileName)
 {
-	pSprite = 0;
-	pTexture = 0;
-	
-	HRESULT hr;
-	if(FAILED(hr = D3DXCreateSprite(pDevice, &pSprite)))
-		return hr;
-
-	if(FAILED(hr = D3DXCreateTextureFromFile(pDevice, szFileName, &pTexture)))
-		return hr;
-
-	D3DSURFACE_DESC d3dsd;
-	if(FAILED(hr = pTexture->GetLevelDesc(0, &d3dsd)))
-		return hr;
-
-	iWidth = d3dsd.Width;
-	iHeight = d3dsd.Height;
-
-	fRotationX = iWidth / 2.0f;
-	fRotationY = iHeight / 2.0f;
-
-	return S_OK;
-	/*if(FAILED(hr = D3DXCreateTextureFromFileEx(pDevice, szFileName, 0, 0, 0, 0,
-											   D3DFMT_A8R8G8B8, D3DPOOL_MANAGED,
-											   D3DX_FILTER_NONE, D3DX_DEFAULT,
-											   0x00000000, 0, 0, &pTexture)))
-		return hr;*/
+    if (!renderer || !szFileName) {
+        return E_FAIL;
+    }
+    SDL_Texture* tex = IMG_LoadTexture(renderer, szFileName);
+    return finish_init(renderer, tex, pTexture, pRenderer,
+                       iWidth, iHeight, fRotationX, fRotationY);
 }
 
-HRESULT SPRITE::Init(LPDIRECT3DDEVICE9 &pDevice, LPVOID memptr, int nFileSize)
+HRESULT SPRITE::Init(SDL_Renderer* renderer, const void* memptr, int nFileSize)
 {
-	pSprite = 0;
-	pTexture = 0;
-	
-	HRESULT hr;
-	if(FAILED(hr = D3DXCreateSprite(pDevice, &pSprite)))
-		return hr;
-
-	if(FAILED(hr = D3DXCreateTextureFromFileInMemory(pDevice, 
-					   memptr, nFileSize, &pTexture)))
-		return hr;
-
-	D3DSURFACE_DESC d3dsd;
-	if(FAILED(hr = pTexture->GetLevelDesc(0, &d3dsd)))
-		return hr;
-
-	iWidth = d3dsd.Width;
-	iHeight = d3dsd.Height;
-
-	fRotationX = iWidth / 2.0f;
-	fRotationY = iHeight / 2.0f;
-
-	return S_OK;
+    if (!renderer || !memptr || nFileSize <= 0) {
+        return E_FAIL;
+    }
+    SDL_RWops* rw = SDL_RWFromConstMem(memptr, nFileSize);
+    if (!rw) {
+        return E_FAIL;
+    }
+    // freesrc=1 → SDL closes the RWops for us.
+    SDL_Texture* tex = IMG_LoadTexture_RW(renderer, rw, 1);
+    return finish_init(renderer, tex, pTexture, pRenderer,
+                       iWidth, iHeight, fRotationX, fRotationY);
 }
 
 HRESULT SPRITE::Draw(BYTE Alpha)
 {
-	pSprite->Begin();
-	
-	HRESULT hr;
-	/*if(iOrientation>0)
-		hr = pSprite->Draw(pTexture, 0, &D3DXVECTOR2(fScale, fScale), &D3DXVECTOR2(fRotationX, fRotationY),
-						   fRotation, &D3DXVECTOR2(fxPos, fyPos), 0xFFFFFFFF);
-	else
-		hr = pSprite->Draw(pTexture, 0, &D3DXVECTOR2(-fScale,  fScale), 
-						   &D3DXVECTOR2(fRotationX-iWidth, fRotationY),
-						   fRotation, &D3DXVECTOR2(fxPos+iWidth, fyPos), 0xFFFFFFFF);*/
-	
-	D3DXMATRIX mScale;
-	D3DXMATRIX mRotationY, mRotationZ;
-	D3DXMATRIX mTranslation;
-	D3DXMATRIX mCenter;
+    if (!pRenderer || !pTexture) {
+        return E_FAIL;
+    }
 
-	D3DXMatrixScaling(&mScale, fScale, fScale, fScale);
-	D3DXMatrixRotationY(&mRotationY, iOrientation*D3DX_PI);
-	D3DXMatrixRotationZ(&mRotationZ, fRotation);
-	D3DXMatrixTranslation(&mTranslation, fxPos, fyPos, 0.0f);
-	D3DXMatrixTranslation(&mCenter, -fRotationX, -fRotationY, 0.0f);
+    SDL_Rect  dst;
+    SDL_Point center;
+    compose_dst(fxPos, fyPos, fRotationX, fRotationY,
+                iWidth, iHeight, fScale, dst, center);
 
-	
-	D3DXMatrixMultiply(&mRotationZ, &mRotationZ, &mRotationY);
-	D3DXMatrixMultiply(&mRotationZ, &mRotationZ, &mScale);
-	D3DXMatrixMultiply(&mRotationZ, &mCenter, &mRotationZ);
-	D3DXMatrixMultiply(&mTranslation, &mRotationZ, &mTranslation);
+    SDL_SetTextureAlphaMod(pTexture, Alpha);
+    SDL_SetTextureBlendMode(pTexture, SDL_BLENDMODE_BLEND);
 
-	hr = pSprite->DrawTransform(pTexture, 0, &mTranslation, D3DCOLOR_ARGB(Alpha, 255, 255, 255));
-	if(FAILED(hr))
-		return hr;
-
-	return pSprite->End();
+    const SDL_RendererFlip flip = iOrientation ? SDL_FLIP_HORIZONTAL : SDL_FLIP_NONE;
+    if (SDL_RenderCopyEx(pRenderer, pTexture, nullptr, &dst,
+                         to_sdl_angle_deg(fRotation), &center, flip) != 0) {
+        return E_FAIL;
+    }
+    return S_OK;
 }
 
-HRESULT SPRITE::Draw(D3DXMATRIX *matInit, BYTE Alpha)
+HRESULT SPRITE::Draw(const Affine2D& parent, BYTE Alpha)
 {
-	pSprite->Begin();
+    if (!pRenderer || !pTexture) {
+        return E_FAIL;
+    }
 
-	HRESULT hr;
+    // Treat the SPRITE's own (pos, rot, scale, flip) as its local
+    // transform; concatenate the parent in front, then render.
+    const Affine2D world = Affine2D::compose(parent, GetTransform());
 
-	D3DXMATRIX mScale;
-	D3DXMATRIX mRotationY, mRotationZ;
-	D3DXMATRIX mTranslation;
-	D3DXMATRIX mCenter;
+    SDL_Rect  dst;
+    SDL_Point center;
+    compose_dst(world.tx, world.ty,
+                fRotationX, fRotationY,
+                iWidth, iHeight, world.scale, dst, center);
 
-	D3DXMatrixScaling(&mScale, fScale, fScale, fScale);
-	D3DXMatrixRotationY(&mRotationY, iOrientation*D3DX_PI);
-	D3DXMatrixRotationZ(&mRotationZ, fRotation);
-	D3DXMatrixTranslation(&mTranslation, fxPos, fyPos, 0.0f);
-	D3DXMatrixTranslation(&mCenter, -fRotationX, -fRotationY, 0.0f);
+    SDL_SetTextureAlphaMod(pTexture, Alpha);
+    SDL_SetTextureBlendMode(pTexture, SDL_BLENDMODE_BLEND);
 
-	
-	D3DXMatrixMultiply(&mRotationZ, &mRotationZ, &mRotationY);
-	D3DXMatrixMultiply(&mRotationZ, &mRotationZ, &mScale);
-	D3DXMatrixMultiply(&mRotationZ, &mCenter, &mRotationZ);
-	D3DXMatrixMultiply(&mTranslation, &mRotationZ, &mTranslation);
-	
-	D3DXMATRIX matResult;
-	D3DXMatrixMultiply(&matResult, &mTranslation, matInit);
-	
-	hr = pSprite->DrawTransform(pTexture, 0, &matResult, D3DCOLOR_ARGB(Alpha, 255, 255, 255));
-	if(FAILED(hr))
-		return hr;
-
-	return pSprite->End();
+    const SDL_RendererFlip flip = world.flip_x ? SDL_FLIP_HORIZONTAL : SDL_FLIP_NONE;
+    if (SDL_RenderCopyEx(pRenderer, pTexture, nullptr, &dst,
+                         to_sdl_angle_deg(world.angle_rad), &center, flip) != 0) {
+        return E_FAIL;
+    }
+    return S_OK;
 }
 
-HRESULT SPRITE::Draw(float fX, float fY, float fRotation, 
-					 float fRotationX, float fRotationY, 
-					 float fScale, BYTE Alpha)
+HRESULT SPRITE::Draw(float fX, float fY, float fR,
+                     float fRX, float fRY,
+                     float fS, BYTE Alpha)
 {
-	pSprite->Begin();
+    if (!pRenderer || !pTexture) {
+        return E_FAIL;
+    }
 
-	HRESULT hr = pSprite->Draw(pTexture, 0, &D3DXVECTOR2(fScale, fScale), 
-							   &D3DXVECTOR2(fRotationX, fRotationY),
-							   fRotation, &D3DXVECTOR2(fX-fRotationX, 
-							   fY-fRotationY), D3DCOLOR_ARGB(Alpha, 255, 255, 255));
-	if(FAILED(hr))
-		return hr;
+    SDL_Rect  dst;
+    SDL_Point center;
+    compose_dst(fX, fY, fRX, fRY, iWidth, iHeight, fS, dst, center);
 
-	return pSprite->End();
+    SDL_SetTextureAlphaMod(pTexture, Alpha);
+    SDL_SetTextureBlendMode(pTexture, SDL_BLENDMODE_BLEND);
+
+    const SDL_RendererFlip flip = iOrientation ? SDL_FLIP_HORIZONTAL : SDL_FLIP_NONE;
+    if (SDL_RenderCopyEx(pRenderer, pTexture, nullptr, &dst,
+                         to_sdl_angle_deg(fR), &center, flip) != 0) {
+        return E_FAIL;
+    }
+    return S_OK;
 }
 
-D3DXMATRIX SPRITE::GetTransformationMatrix()
+Affine2D SPRITE::GetTransform() const
 {
-	D3DXMATRIX mScale;
-	D3DXMATRIX mRotationY, mRotationZ;
-	D3DXMATRIX mTranslation;
-	D3DXMATRIX mCenter;
-
-	D3DXMatrixScaling(&mScale, fScale, fScale, fScale);
-	D3DXMatrixRotationY(&mRotationY, iOrientation*D3DX_PI);
-	D3DXMatrixRotationZ(&mRotationZ, fRotation);
-	D3DXMatrixTranslation(&mTranslation, fxPos, fyPos, 0.0f);
-	D3DXMatrixTranslation(&mCenter, -fRotationX, -fRotationY, 0.0f);
-
-	
-	D3DXMatrixMultiply(&mRotationZ, &mRotationZ, &mRotationY);
-	D3DXMatrixMultiply(&mRotationZ, &mRotationZ, &mScale);
-	//D3DXMatrixMultiply(&mRotationZ, &mCenter, &mRotationZ);
-	D3DXMatrixMultiply(&mTranslation, &mRotationZ, &mTranslation);
-
-	return mTranslation;
+    Affine2D a;
+    a.tx        = fxPos;
+    a.ty        = fyPos;
+    a.angle_rad = fRotation;
+    a.scale     = fScale;
+    a.flip_x    = (iOrientation != 0);
+    return a;
 }
