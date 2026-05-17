@@ -2,8 +2,8 @@
 #ifndef GAMEOBJECT_H
 #define GAMEOBJECT_H
 
-#include "graphics\sprite2.h"
-#include "physics\physics2D.h"
+#include "graphics/sprite2.h"
+#include "physics/physics2D.h"
 
 struct GAMEOBJECT
 {

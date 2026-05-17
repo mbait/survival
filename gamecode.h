@@ -5,10 +5,10 @@
 #include <list>
 #include <dinput.h>
 #include <dxerr9.h>
-//#include "physics\physics2D.h"
-#include "graphics\model.h"
-#include "physics\physics2D.h"
-#include "graphics\particles.h"
+//#include "physics/physics2D.h"
+#include "graphics/model.h"
+#include "physics/physics2D.h"
+#include "graphics/particles.h"
 #include "main.h"
 
 using namespace std;

@@ -3,7 +3,7 @@
 #define PARTICLES_H
 
 #include <windows.h>
-#include "..\physics\math2D.h"
+#include "../physics/math2D.h"
 
 struct COLOR
 {

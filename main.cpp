@@ -91,7 +91,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 		cnt--;
 	}
 	*c_ptr = '\0';
-	strcat(szFileName, "\\settings.ini\0");
+	strcat(szFileName, "/settings.ini\0");
 
 	GetPrivateProfileString(szAppName, "Map", "default.map",
 		g_szMapName, 1024, szFileName);
@@ -153,7 +153,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 	}
 	
 	memset(szFileName, 0, 1024);
-	strcpy(szFileName, "data\\maps\\");
+	strcpy(szFileName, "data/maps/");
 	strcat(szFileName, g_szMapName);
 	if(FAILED(hr = LoadMap(szFileName)))
 	{

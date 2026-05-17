@@ -6,21 +6,21 @@
 //#define GODMODE
 
 const char *szMeshFile[] = {
-	{"data\\meshes\\ragdoll\\head_mesh_c.dat"},
-	{"data\\meshes\\ragdoll\\body_mesh_c.dat"},
-	{"data\\meshes\\ragdoll\\belt_mesh_c.dat"},
-	{"data\\meshes\\ragdoll\\shoulder_mesh_c.dat"},
-	{"data\\meshes\\ragdoll\\shoulder_mesh_c.dat"},
-	{"data\\meshes\\ragdoll\\arm_mesh_c.dat"},
-	{"data\\meshes\\ragdoll\\arm_mesh_c.dat"},
-	{"data\\meshes\\ragdoll\\hand_mesh_c.dat"},
-	{"data\\meshes\\ragdoll\\hand_mesh_c.dat"},
-	{"data\\meshes\\ragdoll\\thigh_mesh_c.dat"},
-	{"data\\meshes\\ragdoll\\thigh_mesh_c.dat"},
-	{"data\\meshes\\ragdoll\\leg_mesh_c.dat"},
-	{"data\\meshes\\ragdoll\\leg_mesh_c.dat"},
-	{"data\\meshes\\ragdoll\\foot_mesh_c.dat"},
-	{"data\\meshes\\ragdoll\\foot_mesh_c.dat"}
+	{"data/meshes/ragdoll/head_mesh_c.dat"},
+	{"data/meshes/ragdoll/body_mesh_c.dat"},
+	{"data/meshes/ragdoll/belt_mesh_c.dat"},
+	{"data/meshes/ragdoll/shoulder_mesh_c.dat"},
+	{"data/meshes/ragdoll/shoulder_mesh_c.dat"},
+	{"data/meshes/ragdoll/arm_mesh_c.dat"},
+	{"data/meshes/ragdoll/arm_mesh_c.dat"},
+	{"data/meshes/ragdoll/hand_mesh_c.dat"},
+	{"data/meshes/ragdoll/hand_mesh_c.dat"},
+	{"data/meshes/ragdoll/thigh_mesh_c.dat"},
+	{"data/meshes/ragdoll/thigh_mesh_c.dat"},
+	{"data/meshes/ragdoll/leg_mesh_c.dat"},
+	{"data/meshes/ragdoll/leg_mesh_c.dat"},
+	{"data/meshes/ragdoll/foot_mesh_c.dat"},
+	{"data/meshes/ragdoll/foot_mesh_c.dat"}
 };
 
 ANIMATION animations[NUMANIMATIONS] = {
@@ -51,10 +51,10 @@ LPDIRECTINPUTDEVICE8 g_pMouse;
 MATERIAL g_aMaterials[MAX_MATERIALS];
 const char *g_szMaterialFile[MAX_MATERIALS] = 
 {
-	"data\\textures\\bricks.jpg\0",
-	"data\\textures\\metal.jpg\0",
-	"data\\textures\\plastic.jpg\0",
-	"data\\textures\\box.tga\0"
+	"data/textures/Bricks.jpg\0",
+	"data/textures/Metal.jpg\0",
+	"data/textures/plastic.jpg\0",
+	"data/textures/box.tga\0"
 };
 
 //game objects
@@ -1737,8 +1737,8 @@ HRESULT AddPlayer()
 	m_aPlayers[index].ID = index;
 
 	HRESULT hr;
-	hr = m_aPlayers[index].Init(g_pDevice, "data\\models\\soldat.m2d",
-					 "data\\meshes\\body.dat", "data\\meshes\\ragdoll\\");
+	hr = m_aPlayers[index].Init(g_pDevice, "data/models/soldat.m2d",
+					 "data/meshes/body.dat", "data/meshes/ragdoll/");
     if(FAILED(hr))
 		return hr;
 
@@ -1749,7 +1749,7 @@ HRESULT AddPlayer()
 	m_aPlayers[index].tmAltShoot.LastTickCount += 2200;
 
 	VECTOR2D *aVertices = new VECTOR2D[6];
-	FILE *f = fopen("data\\meshes\\grenade.dat", "r");
+	FILE *f = fopen("data/meshes/grenade.dat", "r");
 	if(!f)
 		return E_FAIL;
 	
@@ -1856,23 +1856,23 @@ HRESULT LoadGameData()
 	//==========load enviroment objs=======//
 	float fPack_scale = 0.8f;
 
-	hr = pack_ammo.Init(g_pDevice, "data\\sprites\\ammo_pack.tga");
+	hr = pack_ammo.Init(g_pDevice, "data/sprites/ammo_pack.tga");
 	if(FAILED(hr))
 		return hr;
 	pack_ammo.SetScale(fPack_scale);
 
-	hr = pack_grenade.Init(g_pDevice, "data\\sprites\\grenade_pack.tga");
+	hr = pack_grenade.Init(g_pDevice, "data/sprites/grenade_pack.tga");
 	if(FAILED(hr))
 		return hr;
 	pack_grenade.SetScale(fPack_scale);
 
-	hr = pack_health.Init(g_pDevice, "data\\sprites\\health_pack.tga");
+	hr = pack_health.Init(g_pDevice, "data/sprites/health_pack.tga");
 	if(FAILED(hr))
 		return hr;
 	pack_health.SetScale(fPack_scale);
 
 	hr = D3DXCreateTextureFromFile(g_pDevice, 
-		"data\\sprites\\fire.tga", &g_pFireTexture);
+		"data/sprites/fire.tga", &g_pFireTexture);
 	if(FAILED(hr))
 		return hr;
 	
@@ -1881,41 +1881,41 @@ HRESULT LoadGameData()
 	g_pCustom	= new PARTICLE();
 	//==========end enviroment objs=======//
 	//===============load weapons=========//
-	hr = rifle.Init(g_pDevice, "data\\sprites\\rifle.tga");
+	hr = rifle.Init(g_pDevice, "data/sprites/rifle.tga");
 	if(FAILED(hr))
 		return hr;
 	rifle.SetXYPos(15, 25);
 	rifle.SetRotation(PI/4.0f);
 	
-	hr = grenade.Init(g_pDevice, "data\\sprites\\grenade.tga");
+	hr = grenade.Init(g_pDevice, "data/sprites/grenade.tga");
 	if(FAILED(hr))
 		return hr;
 
-	hr = fire.Init(g_pDevice, "data\\sprites\\shoot_fire.tga");
+	hr = fire.Init(g_pDevice, "data/sprites/shoot_fire.tga");
 	if(FAILED(hr))
 		return hr;
 	//=================end weapons========//
 
 	//============load UI elements========//
-	hr = ui_health.Init(g_pDevice, "data\\sprites\\health_ui.tga");
+	hr = ui_health.Init(g_pDevice, "data/sprites/health_UI.tga");
 	if(FAILED(hr))
 		return hr;
 	ui_health.SetXYPos(g_iScreenWidth>>1, 
 		g_iScreenHeight-ui_health.iHeight+(ui_health.iHeight>>2));
 
-	hr = ui_rifle.Init(g_pDevice, "data\\sprites\\rifle_ui.tga");
+	hr = ui_rifle.Init(g_pDevice, "data/sprites/rifle_UI.tga");
 	if(FAILED(hr))
 		return hr;
 	ui_rifle.SetXYPos(ui_rifle.iWidth>>1,
 		g_iScreenHeight-ui_rifle.iHeight+(ui_rifle.iHeight>>2));
 
-	hr = ui_grenade.Init(g_pDevice, "data\\sprites\\grenade_ui.tga");
+	hr = ui_grenade.Init(g_pDevice, "data/sprites/grenade_UI.tga");
 	if(FAILED(hr))
 		return hr;
 	ui_grenade.SetXYPos(g_iScreenWidth-ui_grenade.iWidth,
 		g_iScreenHeight-ui_grenade.iHeight+(ui_grenade.iHeight>>2));
 	
-	hr = cur_ptr.Init(g_pDevice, "data\\sprites\\cursor.tga");
+	hr = cur_ptr.Init(g_pDevice, "data/sprites/cursor.tga");
 	if(FAILED(hr))
 		return hr;
 	cur_ptr.SetScale(0.6f);
@@ -1929,7 +1929,7 @@ HRESULT LoadMap(const char* szFileName)
 		HRESULT hr;
 	
 	//===============load materials==============//
-	FILE *f = fopen("data\\config\\mat.cfg", "r");
+	FILE *f = fopen("data/config/mat.cfg", "r");
 	if(!f)
 		return E_FAIL;
 
@@ -2620,7 +2620,7 @@ HRESULT ShowSplash()
 	
 	SPRITE splash;
 	
-	if(FAILED(splash.Init(g_pDevice, "data\\sprites\\splash.jpg")))
+	if(FAILED(splash.Init(g_pDevice, "data/sprites/splash.jpg")))
 		return S_OK;
 
 	HRESULT hr = g_pDevice->BeginScene();
@@ -2676,4 +2676,4 @@ void ErrorMessage(HWND hwndParent, HRESULT hr)
 	ShowCursor(SW_SHOW);
 	ShowWindow(hwndParent, SW_HIDE);
 	MessageBox(hwndParent, DXGetErrorDescription9(hr), "Error", MB_OK|MB_ICONHAND);	
-}
+}
