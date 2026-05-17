@@ -1,0 +1,245 @@
+
+#define INITGUID
+
+#include <stdio.h>
+#include <list>
+#include <dinput.h>
+#include <dxerr9.h>
+//#include "physics\physics2D.h"
+#include "graphics\model.h"
+#include "physics\physics2D.h"
+#include "graphics\particles.h"
+#include "main.h"
+
+using namespace std;
+
+#pragma comment(lib, "d3d9.lib")
+#pragma comment(lib, "d3dx9.lib")
+#pragma comment(lib, "dxerr9.lib")
+#pragma comment(lib, "dinput8.lib")
+
+#define D3DFVF_TEXTUREVERTEX (D3DFVF_XYZRHW|D3DFVF_TEX1)
+#define D3DFVF_COLORVERTEX   (D3DFVF_XYZRHW|D3DFVF_DIFFUSE)
+#define PI D3DX_PI
+//#define MIN_VELX 60.5f
+//#define MIN_VELY 60.5f
+
+//game options////////
+#define MAX_PLAYERS 15
+//////////////////////
+
+//world physic constants//////
+#define RUN_ACC			800.0f
+#define RUN_MINVEL		5.0E-1f
+#define RUN_MAXVEL		600.0f
+#define FALL_MINVEL		0.54E3f
+#define FALL_MAXVEL		3.0E3f
+#define FALL_MAXVEL2	4.0E3f
+#define JUMP_ACC		300.0f
+#define WJUMP_ACC		150.0f
+#define FLY_MAXVEL		200.0f
+#define FLY_ACC			100.0f
+#define FRICTION		0.01f
+#define BOUNCE			0.1f
+#define SHOOT_FORCE		0.5E3f
+#define SHOOT_DAMAGE	4
+#define EXPLODE_FORCE	4.0E5f
+#define EXPLODE_RANGE	100.0f
+//////////////////////////////
+
+#define DEPTH_EPSILON 2.0f
+
+//mouse settings////////
+#define MOUSE_MIN_X    0
+#define MOUSE_MIN_Y -100
+#define MOUSE_MAX_X	 100
+#define MOUSE_MAX_Y  100
+////////////////////////
+
+#define BUFFERSIZE		10000
+#define MAX_PARTICLES	20000
+
+//enviroment options////////////////
+#define FIRE_NUMPARTICLES		1000
+#define SMOKE_NUMPARTICLES		1000
+#define CONCRETE_NUMPARTICLES	3
+
+#define FIREPARTICLE_VEL		50
+#define SMOKEPARTICLE_VEL		50
+#define CONCRETEPARTICLE_VEL	100
+
+#define MAX_MATERIALS			32
+//player options////////////////////
+#define PACK_AMMO_SIZE			20
+#define PACK_GRENADE_SIZE		2
+#define PACK_HEALTH_SIZE		50
+////////////////////////////////////
+
+//AI options////////////////////////
+#define NEAR_DISTANCE			150.0f
+#define SQ_NEAR_DISTANCE		22500
+#define FAR_DISTANCE			300.0f
+#define SQ_FAR_DISTANCE			90000
+////////////////////////////////////
+
+//macroses
+#define RANDOM ((float)rand()/RAND_MAX)
+
+//enumerations
+typedef enum{ANIMATION_IDLE, ANIMATION_RUN, ANIMATION_JUMP,
+			 ANIMATION_WJUMP, ANIMATION_SLIDE, ANIMATION_FALL,
+             ANIMATION_CROUCHIDLE, ANIMATION_CROUCHRUN,
+			 NUMANIMATIONS} ANIMATION_TYPE;
+typedef enum{RIFLE, GRENADE, NUMWEAPONS} WEAPON;
+typedef enum{MOVEUP, MOVEDOWN, MOVELEFT, 
+			 MOVERIGHT, JUMP, WJUMP, SHOOT, 
+			 ALTSHOOT, CROUCH, NUMACTIONS} ACTION;
+typedef enum{IDLE, RUN, SLIDE, FLY, FALL, NUMSTATES} STATE;
+typedef enum{LEFT=-1, RIGHT=1} DIRECTION;
+typedef enum{NONE, VERT, HORZ} COLLISION;
+typedef enum{BRICKS, METAL, PLASTIC, WOOD, NUM_MATERIALS} MATERIAL_TYPE;
+typedef enum{PACK_AMMO, PACK_GRENADE, PACK_HEALTH, NUM_PACKS} PACK_TYPE;
+typedef enum{ATTACK, RUNAWAY, PURSUIT, SEARCH_PACK, HELP} AI_STATE_TYPE;
+
+//screen initialization struct
+/*struct SCREENSETTINGS
+{
+	HWND hwndParent;
+	HINSTANCE hInstance;
+
+	int iWidth;
+	int iHeight;
+	
+	bool bWindowed;
+
+	DWORD dwAAFlag;
+};
+*/
+//D3D structures
+struct COLORVERTEX
+{
+	float x, y, z, rhw;
+	DWORD color;
+};
+struct TEXTUREVERTEX
+{
+	float x, y, z, rhw;
+	float u, v;
+};
+
+//game structures
+struct TIMER
+{
+	DWORD LastTickCount;
+	DWORD ThisTickCount;
+	
+	TIMER() {
+		LastTickCount = GetTickCount();
+		ThisTickCount = GetTickCount();
+	}
+	inline DWORD Delta()
+	{
+		return (ThisTickCount-LastTickCount);
+	}
+	inline DWORD Update() {
+		return ThisTickCount = GetTickCount();
+	}
+	inline void Reset()
+	{
+		LastTickCount = ThisTickCount =
+		GetTickCount();
+	}
+};
+
+struct MATERIAL
+{
+	LPDIRECT3DTEXTURE9 pTexture;
+	
+	float fWidth;
+	float fHeight;
+};
+
+struct PACK
+{
+	PACK_TYPE	type;
+	TIMER		tmReset;
+	bool		bActive;
+	int			nVertexIndex;
+};
+
+struct PLAYER
+{
+	unsigned int ID;
+	
+	static const c_NumHealth	= 100;
+	static const c_NumRifleAmmo = 200;
+	static const c_NumGrenades	= 10;
+	
+	bool bAlive;
+	bool bShooting;
+	bool bBoxCollision;
+	
+	bool bJumpKeyOnce;
+	bool bWJumpKeyOnce;
+
+	RIGIDBODY *pViewObject;
+	int	iViewSoldierID;
+
+	//object sprites and bodies
+	MODEL		model;
+	RIGIDBODY	body;
+    
+	RIGIDBODY	ragdoll[NUM_PARTS];
+	JOINT		joints[13];
+
+	RIGIDBODY	grenade_body;
+	TIMER		tmGrenade;
+	bool		bActiveGrenade;
+	
+	//object states
+	STATE		state;
+	STATE		prev_state;
+	DIRECTION	dir;
+	COLLISION	coll;
+	int			nVertexIndex;
+
+	VECTOR2D	cursor;
+
+	//object timers
+	TIMER		tmDeath;
+	TIMER		tmShoot;
+	TIMER		tmAltShoot;
+
+	//object parameters
+	int		health;
+	int		ammo[NUMWEAPONS];
+
+	HRESULT Init(LPDIRECT3DDEVICE9 pDevice,
+				 const char* szModelFileName,
+				 const char* szBodyFilename,
+				 const char* szRagDollDir);
+	void	Update(DWORD dwTime, bool *actions);
+};
+
+struct NODE
+{
+	VECTOR2D vPos;
+
+	int *aEdges;
+	int iNumEdges;
+};
+
+inline DWORD FtoDW( FLOAT f ) { return *((DWORD*)&f); }
+
+HRESULT InitD3D(HWND hwndParent);
+HRESULT ShowSplash();
+HRESULT InitDI(HWND hwndParent, HINSTANCE hInstance);
+HRESULT RestoreD3D();
+HRESULT RestoreDI();
+HRESULT LoadGameData();
+HRESULT	LoadMap(const char *szFileName);
+HRESULT UpdateScene(DWORD dwTime);
+HRESULT UpdateFrame();
+
+void ErrorMessage(HWND hwndParent, HRESULT hr);
+void Cleanup();

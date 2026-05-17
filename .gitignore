@@ -1,0 +1,66 @@
+# --- Built artifacts -------------------------------------------------
+*.exe
+*.obj
+*.o
+*.a
+*.lib
+*.dll
+*.so
+*.so.*
+*.dylib
+*.pdb
+*.ilk
+*.exp
+*.map
+!data/maps/*.map
+
+# --- MSVC / VS2003 generated -----------------------------------------
+*.ncb
+*.suo
+*.user
+*.aps
+*.opensdf
+*.sdf
+*.VC.db
+*.VC.opendb
+Debug/
+Release/
+
+# --- CMake -----------------------------------------------------------
+build/
+build-*/
+out/
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+compile_commands.json
+
+# --- Editor / IDE ----------------------------------------------------
+.vs/
+.vscode/
+.idea/
+*.swp
+*~
+
+# --- Local Claude Code state (not project state) ---------------------
+.claude/
+
+# --- Archives & legacy snapshots (kept on disk, excluded from git) ---
+*.rar
+*.zip
+*.7z
+builds/
+d3dg/
+d3dg2/
+a/
+
+# --- Misc working files ----------------------------------------------
+debug.txt
+*.bak
+*.old
+fraps.lnk
+
+# --- OS --------------------------------------------------------------
+.DS_Store
+Thumbs.db
