@@ -2,7 +2,9 @@
 #ifndef PARTICLES_H
 #define PARTICLES_H
 
-#include <windows.h>
+#include <cstring>
+
+#include "compat/win32_compat.h"
 #include "../physics/math2D.h"
 
 struct COLOR

@@ -53,10 +53,10 @@ add_executable(game
     # gamecode.cpp               # Phase 1g/1h/1k/1l
     # object.cpp                 # Phase 1k
     graphics/sprite2.cpp         # Phase 1i
-    # graphics/model.cpp         # Phase 1j
-    # graphics/particles.cpp     # Phase 1j
-    # physics/math2D.cpp         # Phase 1l (compiles unchanged, just gated)
-    # physics/physics2D.cpp      # Phase 1l
+    graphics/model.cpp           # Phase 1j
+    graphics/particles.cpp       # Phase 1j
+    physics/math2D.cpp           # Phase 1j (compiles unchanged, just gated)
+    physics/physics2D.cpp        # Phase 1j
 )
 
 target_include_directories(game PRIVATE

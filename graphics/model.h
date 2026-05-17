@@ -1,4 +1,3 @@
-
 #ifndef MODEL_H
 #define MODEL_H
 
@@ -34,7 +33,7 @@ struct ANIMATION
 	int iStartFrame;
 	int iEndFrame;
 	float fRate;
-	DWORD dwTime; 
+	DWORD dwTime;
 	int iType;
 };
 
@@ -42,23 +41,23 @@ class MODEL
 {
 private:
 	SPRITE aParts[NUM_PARTS];
-	
+
 	float fxPos, fyPos;
 	float fRotation;
 	float fScale;
 	int iOrientation;
-	
+
 	KEYFRAME *frames;
 	int iNumFrames;
 	ANIMATION animation;
 	bool bAnimationActive;
-	
-	
+
+
 	//animation variables
 	DWORD counter;
 	DWORD cur_frame;
 	DWORD anim_framecnt;
-	
+
 	KEYFRAME prev_state;
 
 public:
@@ -88,8 +87,8 @@ public:
 	inline void Flip() {iOrientation = 1-iOrientation;}
 
 	inline SPRITE* GetPart(int nPartIndex) {return &aParts[nPartIndex];}
-	
-	HRESULT LoadFromFile(LPDIRECT3DDEVICE9 &pDevice, const char *szFileName);
+
+	HRESULT LoadFromFile(SDL_Renderer* renderer, const char *szFileName);
 
 	HRESULT Draw(SPRITE *pSprite = 0, SPRITE *pFire = 0, BYTE Alpha = 0xFF);
 

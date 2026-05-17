@@ -1,6 +1,7 @@
 
 #include "polygon.h"
 #include "physics2D.h"
+#include "compat/win32_compat.h"
 
 void swap(float &a, float &b)
 {
@@ -415,7 +416,7 @@ bool CircleIntersect(RIGIDBODY &body, VECTOR2D center,
 		minpd = pd;
 		N = Axis;
 	}
-	for(int j=body.iNumVertices-1, int i=0; i<body.iNumVertices; j=i, i++)
+	for(int i=0, j=body.iNumVertices-1; i<body.iNumVertices; j=i, i++)
 	{
 		Axis = Normalize(Perp(body.lpVertices[i]-body.lpVertices[j]));
 		circle.lpVertices[0] = center+Axis*fRadius;

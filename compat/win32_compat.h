@@ -15,6 +15,7 @@
 
 #include <chrono>
 #include <cstdint>
+#include <limits>
 
 using BYTE     = std::uint8_t;
 using byte     = std::uint8_t;
@@ -34,6 +35,12 @@ constexpr HRESULT E_FAIL = -1;
 // D3DX_PI as a float constant (was a D3DX macro in the original headers).
 #ifndef D3DX_PI
 #define D3DX_PI 3.14159265358979323846f
+#endif
+
+// _HUGE — MSVC float-limits sentinel from <float.h>. Used in physics2D
+// as a "very large value" initial guess for shortest-distance scans.
+#ifndef _HUGE
+#define _HUGE (std::numeric_limits<double>::infinity())
 #endif
 
 // Millisecond tick count, matching Win32 GetTickCount() semantics
