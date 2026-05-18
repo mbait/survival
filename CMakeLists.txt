@@ -87,3 +87,42 @@ add_custom_command(TARGET game POST_BUILD
         ${CMAKE_SOURCE_DIR}/settings.ini $<TARGET_FILE_DIR:game>/settings.ini
     VERBATIM
 )
+
+# ---------------------------------------------------------------------------
+# Tests (Phase 3g) — opt-in via -DBUILD_TESTING=ON (default ON)
+# ---------------------------------------------------------------------------
+option(BUILD_TESTING "Build the Catch2 unit tests" ON)
+if(BUILD_TESTING)
+    enable_testing()
+
+    # Prefer a system-installed Catch2 (debian: libcatch2-dev); fall back to
+    # FetchContent so the first build on a fresh box doesn't need apt.
+    find_package(Catch2 3 QUIET)
+    if(NOT Catch2_FOUND)
+        include(FetchContent)
+        FetchContent_Declare(Catch2
+            GIT_REPOSITORY https://github.com/catchorg/Catch2.git
+            GIT_TAG        v3.5.4
+            GIT_SHALLOW    TRUE)
+        FetchContent_MakeAvailable(Catch2)
+    endif()
+
+    add_executable(survival_tests
+        tests/test_math2D.cpp
+        tests/test_physics2D.cpp
+        physics/math2D.cpp
+        physics/physics2D.cpp
+    )
+    target_include_directories(survival_tests PRIVATE
+        ${CMAKE_SOURCE_DIR}
+        ${CMAKE_SOURCE_DIR}/compat
+    )
+    target_link_libraries(survival_tests PRIVATE Catch2::Catch2WithMain)
+
+    if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+        target_compile_options(survival_tests PRIVATE -Wall -Wextra -Wno-unused-parameter)
+    endif()
+
+    include(Catch)
+    catch_discover_tests(survival_tests)
+endif()
