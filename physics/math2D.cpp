@@ -123,7 +123,6 @@ float PerpDotProduct(VECTOR2D const &A, VECTOR2D const &B)
 VECTOR2D Projection(VECTOR2D const &A, VECTOR2D const &B)
 {
 	float l = DotProduct(A, B);
-	VECTOR2D n = Normalize(B);
 
 	return (B*l);
 }

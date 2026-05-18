@@ -29,17 +29,17 @@ struct PARTICLE
 	VECTOR2D Velocity;
 	VECTOR2D Acceleration;
 	
-	DWORD counter;
-	DWORD TTL;
-	
+	DWORD counter = 0;
+	DWORD TTL = 0;
+
 	COLOR color_start;
 	COLOR color_end;
 	COLOR color_current;
-	
-	PARTICLE *prev;
-	PARTICLE *next;
 
-	PARTICLE() {memset(this, 0, sizeof(PARTICLE));}
+	PARTICLE *prev = nullptr;
+	PARTICLE *next = nullptr;
+
+	PARTICLE() = default;
 	
 	void Add(PARTICLE *particle);
 	void Delete();

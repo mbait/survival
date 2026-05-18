@@ -16,14 +16,14 @@ RIGIDBODY::RIGIDBODY()
 	fMass = 0.0f;
 	fInertia = 0.0f;
 
-    VECTOR2D Pos = VECTOR2D(0.0f, 0.0f);
+	[[maybe_unused]] VECTOR2D Pos = VECTOR2D(0.0f, 0.0f);
 	fOrientation = 0.0f;
-	MATRIX mOrientation = MATRIX(0.0f);
-	
-	VECTOR2D Velocity = VECTOR2D(0.0f, 0.0f);
+	[[maybe_unused]] MATRIX mOrientation = MATRIX(0.0f);
+
+	[[maybe_unused]] VECTOR2D Velocity = VECTOR2D(0.0f, 0.0f);
 	fAngVelocity = 0.0f;
 
-	VECTOR2D Force = VECTOR2D(0.0f, 0.0f);
+	[[maybe_unused]] VECTOR2D Force = VECTOR2D(0.0f, 0.0f);
 	fTorque = 0.0f;
 
 	lpVertices = 0;
@@ -227,10 +227,8 @@ bool RIGIDBODY::Collide(RIGIDBODY &body, VECTOR2D &MTD, float &t)
 
 	float minpd = _HUGE;
 
-	VECTOR2D Vel = Velocity-body.Velocity;
-	float fSVel = DotProduct(Vel, Vel);
-
 	/*if(fSVel>1.0E-4f)
+	VECTOR2D Vel = Velocity-body.Velocity;
 	{
 		VECTOR2D N = Normalize(Perp(Vel));
 		float pd = CalcSeparateAxis(N, *this, body);
@@ -288,10 +286,8 @@ bool RIGIDBODY::Collide(RIGIDBODY &body, VECTOR2D &MTD, float &t)
 bool RayIntersect(RIGIDBODY &body, VECTOR2D raystart, 
 				  VECTOR2D rayend, float &t, VECTOR2D &Nt)
 {
-	VECTOR2D raydir = rayend-raystart;
 	VECTOR2D N;
 	float tnear = _HUGE;
-	float tfar  =  100.0f;
 	bool bCross = false;
 
 	int iNumVertices = body.iNumVertices;
@@ -323,7 +319,6 @@ bool RayIntersect(RIGIDBODY &body, VECTOR2D raystart,
 
 		float t1;
 		float t2;
-		bool fCross;
 		float d  = (by*ax-bx*ay);
 		if(d)
 		{
@@ -552,7 +547,6 @@ float SolveContact(RIGIDBODY &A, RIGIDBODY &B, VECTOR2D N, VECTOR2D P, float t)
 	VECTOR2D Vbp = B.Velocity + Perp(Bp)*B.fAngVelocity;
 	VECTOR2D Vab = Vap-Vbp;
 	VECTOR2D Normal = N;
-	float Vn = DotProduct(Vab, Perp(Normal));
 
 	float fRest = (A.fRestitution+B.fRestitution)*0.5f;
 	float Num = -(1+fRest)*DotProduct(Vab, Normal);

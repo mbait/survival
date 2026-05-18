@@ -423,7 +423,7 @@ void PLAYER::Update(DWORD dwTime, bool *actions)
 							MTD, force_point);
 
 						m_aPlayers[i].health -= (int)((fForce/EXPLODE_FORCE)*100);
-						if(m_aPlayers[i].health<=0 && i!=ID)
+						if(m_aPlayers[i].health<=0 && i!=static_cast<int>(ID))
 							m_aFrags[ID]++;
 
 					}
@@ -623,7 +623,7 @@ void PLAYER::Update(DWORD dwTime, bool *actions)
 	VECTOR2D d = aWayPoints[nVertexIndex].vPos-body.Pos;
 	float dp = DotProduct(d, d);
 	float mindp = dp;
-	int index = nVertexIndex, v;
+	int index = nVertexIndex;
 
 	//absolute points
 	for(int i=0; i<g_iNumWayPoints; i++)
@@ -734,11 +734,12 @@ void PLAYER::Update(DWORD dwTime, bool *actions)
 	//addition states
 	if(state == IDLE && Length(body.Velocity)>40.0f)
 		state = SLIDE;
-	if(state == SLIDE && !bCollided)
+	if(state == SLIDE && !bCollided) {
 		if(body.Velocity.y<0)
 			state = FLY;
 		else
 			state = FALL;
+	}
 		
 	//resolve soldat state
 	switch(state)
@@ -774,6 +775,7 @@ void PLAYER::Update(DWORD dwTime, bool *actions)
 				model.StartAnimation();
 			}
 		}
+	case NUMSTATES: break;
 	}
 	prev_state = state;
 	
@@ -830,7 +832,7 @@ void PLAYER::Update(DWORD dwTime, bool *actions)
 	int  iSoldierInd = -1;
 	VECTOR2D vView;
 	for(int i=0; i<g_iNumPlayers; i++)
-		if(i!=ID && m_aPlayers[i].bAlive)
+		if(i!=static_cast<int>(ID) && m_aPlayers[i].bAlive)
 			if(RayIntersect(m_aPlayers[i].body, RayStart, RayEnd, t, Nt))
 			{
 				vView = Nt*t;
@@ -856,9 +858,8 @@ void PLAYER::Update(DWORD dwTime, bool *actions)
 	}
 		
 	cursor = cursor_vec*mint;
-		
-	VECTOR2D ptr_pos = g_vCenter+Normalize(cursor)*100;
-	//cur_ptr.SetXYPos(ptr_pos.x, ptr_pos.y);
+	
+	//cur_ptr.SetXYPos(g_vCenter.x + Normalize(cursor).x * 100, ...);
 	//0.2f = atan2(100, 20) :-), precalculations rulezz!!!
 	//cur_ptr.SetRotation(fTheta-0.2f*o); 
 
@@ -891,9 +892,10 @@ void PLAYER::Update(DWORD dwTime, bool *actions)
 			}
 
 		//add particles
-		if(mint>0.0f)
+		if(mint>0.0f) {
 			if(bStaticObject)
 				AddCustomParticles(view_pt, minNt, COLOR(128, 128, 128, 128));
+		}
 			else
 			{
 				if(bViewSoldier)
@@ -971,6 +973,7 @@ void PLAYER::Update(DWORD dwTime, bool *actions)
 						if(health>c_NumHealth)
 							health = c_NumHealth;
 					}break;
+				case NUM_PACKS: break;
 				}
 
 				aPacks[i].bActive = false;
@@ -1018,7 +1021,6 @@ HRESULT UpdateScene(DWORD dwTime)
 	// in the main loop refreshes it. SDL_GetKeyboardState returns a
 	// pointer into that buffer indexed by SDL_SCANCODE_*.
 	const Uint8* keystate = SDL_GetKeyboardState(nullptr);
-	HRESULT hr = S_OK;
 
 	bool actions[NUMACTIONS];
 	memset(actions, 0, sizeof(actions));
@@ -1046,7 +1048,7 @@ HRESULT UpdateScene(DWORD dwTime)
 	{
 		if(g_bAddKeyOnce && g_iNumPlayers<MAX_PLAYERS)
 		{
-			hr = AddPlayer();
+			(void)AddPlayer();
 			g_bAddKeyOnce = false;
 		}
 	}
@@ -1161,15 +1163,16 @@ HRESULT UpdateScene(DWORD dwTime)
 			ptr = ptr->next;
 	}
 
-	for(int i=0; i<g_iNumPackPlaces; i++)
-		if(!aPacks[i].bActive)
-			if(aPacks[i].tmReset.Delta()>60000)
-			{
-				aPacks[i].type = (PACK_TYPE)(int)(RANDOM*NUM_PACKS);
+	for(int i=0; i<g_iNumPackPlaces; i++) {
+		if(!aPacks[i].bActive) {
+			if(aPacks[i].tmReset.Delta()>60000) {
+				aPacks[i].type = (PACK_TYPE)(int)(RANDOM*static_cast<int>(NUM_PACKS));
 				aPacks[i].bActive = true;
-			}
-			else
+			} else {
 				aPacks[i].tmReset.Update();
+			}
+		}
+	}
 
 	return S_OK;
 }
@@ -1507,11 +1510,6 @@ HRESULT LoadGameData()
 	g_vCenter = VECTOR2D(g_iScreenWidth>>1, g_iScreenHeight>>1);
 
 	HRESULT hr;
-
-	FILE *f;
-	VECTOR2D *aVertices;
-	int iNumVerts;
-	float x, y;
 	//==========load main player model===========//
 	//m_aPlayers = new PLAYER[MAX_PLAYERS];
 	
@@ -1615,8 +1613,6 @@ HRESULT LoadGameData()
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 HRESULT LoadMap(const char* szFileName)
 {
-		HRESULT hr;
-	
 	//===============load materials==============//
 	FILE *f = fopen("data/config/mat.cfg", "r");
 	if(!f)
@@ -1731,7 +1727,7 @@ HRESULT LoadMap(const char* szFileName)
 		fscanf(f, "%f%f", &aPackPlaces[i].x, 
 			&aPackPlaces[i].y);
 
-		aPacks[i].type = (PACK_TYPE)(int)(RANDOM*NUM_PACKS);
+		aPacks[i].type = (PACK_TYPE)(int)(RANDOM*static_cast<int>(NUM_PACKS));
 		aPacks[i].bActive = true;
 	}
 	//===============end packplaces=========//
@@ -1981,11 +1977,12 @@ void GetAIActions(int index, bool *actions)
 			}
 			else
 			{
-				if((1-2*m_aPlayers[index].model.GetOrientation()) != Sign(obj_vec.x))
+				if((1-2*m_aPlayers[index].model.GetOrientation()) != Sign(obj_vec.x)) {
 					if(obj_vec.x>0.0f)
 						actions[MOVERIGHT] = true;
 					else
 						actions[MOVELEFT]  = true;
+				}
 
 				m_AIStates[index-1] = ATTACK;
 			}
@@ -2053,7 +2050,8 @@ void GetAIActions(int index, bool *actions)
 							if(health_level>40)
 								continue;
 							break;
-						}
+				case NUM_PACKS: break;
+				}
 						
 						min = apPathDistance[src_vert][aPacks[i].nVertexIndex];
 						next_vert = aPacks[i].nVertexIndex;
