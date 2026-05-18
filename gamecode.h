@@ -1,16 +1,16 @@
 
 #define INITGUID
 
-#include <stdio.h>
-#include <list>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <cmath>
+
 #include "compat/win32_compat.h"
-//#include "physics/physics2D.h"
 #include "graphics/model.h"
 #include "physics/physics2D.h"
 #include "graphics/particles.h"
 #include "main.h"
-
-using namespace std;
 
 // Linker dependencies are handled by CMake on Linux; the #pragma comment
 // directives are MSVC-only and silently ignored elsewhere. Kept gated so
