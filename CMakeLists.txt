@@ -50,7 +50,7 @@ add_executable(game
     platform/main_sdl.cpp        # Phase 1e
     platform/read_ini.cpp        # Phase 1f
     platform/font_cache.cpp      # Phase 1k.2
-    gamecode.cpp                 # Phase 1g/1h/1k/1l
+    game/lifecycle.cpp           # Phase 3h
     game/ai.cpp                  # Phase 3h
     game/effects.cpp             # Phase 3h
     game/players.cpp             # Phase 3h
