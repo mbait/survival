@@ -8,6 +8,8 @@
 
 #include <vector>
 
+#include "game/ai.h"
+#include "game/effects.h"
 #include "platform/font_cache.h"
 
 //#define DEBUG
@@ -41,8 +43,8 @@ ANIMATION animations[static_cast<int>(ANIMATION_TYPE::NUMANIMATIONS)] = {
 };
 
 // SDL render context — borrowed from the platform layer; we don't own these.
-static SDL_Window*   g_window   = nullptr;
-static SDL_Renderer* g_renderer = nullptr;
+SDL_Window*   g_window   = nullptr;
+SDL_Renderer* g_renderer = nullptr;
 
 // Owned textures: loaded in LoadGameData, freed in Cleanup. Fonts and
 // per-frame geometry batches come back in Phase 1k.2.
@@ -74,7 +76,6 @@ std::vector<std::vector<int>>     apPathParent;
 std::vector<std::vector<float>>   apPathDistance;
 int				m_aFrags[MAX_PLAYERS];
 int				m_aDeath[MAX_PLAYERS];
-std::vector<AI_STATE_TYPE>        m_AIStates;
 
 //game sprites
 SPRITE	rifle;
@@ -91,14 +92,6 @@ SPRITE  pack_health;
 //cursor coordinates
 SDL_Point g_cursor;
 VECTOR2D g_vCenter;
-
-//particle objects
-PARTICLE *g_pFire;
-int g_FireParticleCnt = 0;
-PARTICLE *g_pSmoke;
-int g_SmokeParticleCnt = 0;
-PARTICLE *g_pCustom;
-int g_CustomParticleCnt = 0;
 
 //world data
 std::vector<std::vector<VECTOR2D>> g_vWallTex;
@@ -126,68 +119,7 @@ bool g_bShowStat = false;
 
 HRESULT	AddPlayer();
 void	RespawnPlayer(PLAYER* player);
-void	GetAIActions(int index, bool *actions);
-int		ScoreCmp(const void* arg_1, const void* arg_2);
 
-/////////////////////////////////////PARTICLE SYSTEM FUCTIONS//////////////////////////////////////
-void AddFireParticles(VECTOR2D vPoint)
-{
-	PARTICLE p;
-	
-	for(int i=0; i<FIRE_NUMPARTICLES && g_FireParticleCnt<MAX_PARTICLES; i++)
-	{
-		float Mul = 30*RANDOM+100;
-		float fTheta = 2*PI*RANDOM;
-		float fRadius = Mul*RANDOM;
-
-		p.Pos = vPoint;
-		p.Velocity = VECTOR2D(fTheta)*fRadius;
-		p.Acceleration = -p.Velocity/0.8;
-		
-		p.TTL = (int)(1000*((float)rand()/RAND_MAX));
-		
-		
-		p.color_start = COLOR(128, 128, 128, 128);
-		p.color_end   = COLOR();
-
-		g_pFire->Add(&p);
-		g_FireParticleCnt++;
-	}
-}
-
-void AddSmokeParticles(VECTOR2D vPoint)
-{
-}
-
-void AddCustomParticles(VECTOR2D vPoint, VECTOR2D vNormal, COLOR color)
-{
-	float fTheta = atan2(vNormal.y, vNormal.x)+PI/2.0f;
-	float fVel;
-	PARTICLE p;
-
-	// Offset spawn slightly along the surface normal so static-wall
-	// particles don't get re-absorbed by gravity before they're visible.
-	// Dynamic bodies move away on impact and don't need this; static
-	// walls do.
-	const VECTOR2D vSpawn = vPoint + Normalize(vNormal) * 4.0f;
-
-	for(int i=0; i<CONCRETE_NUMPARTICLES && g_CustomParticleCnt<MAX_PARTICLES; i++)
-	{
-		fVel = CONCRETEPARTICLE_VEL*RANDOM;
-
-		p.Pos = vSpawn;
-		p.Velocity = VECTOR2D(fTheta-PI*RANDOM)*fVel;
-		p.Acceleration = VECTOR2D(0, 0);
-		
-		p.color_start = color;
-		p.color_end   = COLOR();
-		
-		p.TTL = 500;
-
-		g_pCustom->Add(&p);
-		g_CustomParticleCnt++;
-	}
-}
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 HRESULT PLAYER::Init(SDL_Renderer* pRenderer,
 					 const char *szModelFileName,
@@ -1828,239 +1760,6 @@ void Cleanup()
 	g_renderer = nullptr;
 	g_window   = nullptr;
 }
-////////////////////////////////////////////ARTIFICIAL INTELEGENCE//////////////////////////////////
-void RunToWayPoint(bool *actions, int index, int WPIndex)
-{
-	VECTOR2D dst_vec = aWayPoints[WPIndex].vPos-
-		aWayPoints[m_aPlayers[index].nVertexIndex].vPos;
-						
-	if(dst_vec.x>0.0f)
-		actions[static_cast<int>(ACTION::MOVERIGHT)] = true;
-	else if(dst_vec.x<0.0f)
-		actions[static_cast<int>(ACTION::MOVELEFT)]  = true;
-
-	float fTheta = atan2(-dst_vec.y, dst_vec.x);
-	if(fTheta>Pi)
-		fTheta = -fTheta;
-	fTheta -= Pi/2.0f;
-
-	if(fabs(fTheta)<Pi/4.0f && m_aPlayers[index].prev_state != STATE::FLY)
-		actions[static_cast<int>(ACTION::JUMP)] = true;
-}
-
-void GetAIActions(int index, bool *actions)
-{
-	memset(actions, false, static_cast<size_t>(ACTION::NUMACTIONS));
-	
-	if(!g_iNumWayPoints)
-		return;
-	
-	int src_vert = m_aPlayers[index].nVertexIndex;
-	int dst_vert;
-	int next_vert;
-
-	bool bCanShoot = m_aPlayers[index].iViewSoldierID == 0;
-
-	int ammo_level = m_aPlayers[index].ammo[static_cast<int>(WEAPON::RIFLE)]*
-		100/PLAYER::c_NumRifleAmmo;
-	int grenade_level = m_aPlayers[index].ammo[static_cast<int>(WEAPON::GRENADE)]*
-		100/PLAYER::c_NumGrenades;
-	int health_level = m_aPlayers[index].health*
-		100/PLAYER::c_NumHealth;
-	
-	int o = 1-2*m_aPlayers[index].model.GetOrientation();
-	VECTOR2D obj_vec = m_aPlayers[0].body.Pos-
-		m_aPlayers[index].body.Pos-VECTOR2D(0.0f, 10.0f*o);
-
-	VECTOR2D view_vec;
-	
-	switch(m_AIStates[index-1])
-	{
-	//attack the player_0
-	case AI_STATE_TYPE::ATTACK:
-		{
-			view_vec = obj_vec;
-			if((ammo_level<20 && grenade_level==0) || health_level<15)
-				m_AIStates[index-1] = AI_STATE_TYPE::RUNAWAY;
-			else
-			{
-				if(bCanShoot)
-				{
-					actions[static_cast<int>(ACTION::SHOOT)] = true;
-
-					if(DotProduct(obj_vec, obj_vec)>SQ_NEAR_DISTANCE)
-						if((int)(RANDOM*10) == 5 && grenade_level>0)
-							actions[static_cast<int>(ACTION::ALTSHOOT)] = true;
-				}
-				else
-					m_AIStates[index-1] = AI_STATE_TYPE::PURSUIT;
-			}
-		}break;
-	//look for player_0
-	case AI_STATE_TYPE::PURSUIT:
-		{
-			view_vec = obj_vec;
-			dst_vert = m_aPlayers[0].nVertexIndex;
-			
-			if(apPathDistance[src_vert][dst_vert]>NEAR_DISTANCE)
-			{
-				if(ammo_level>=50 && health_level>=40)
-				{
-					next_vert = apPathParent[src_vert][dst_vert];
-	
-					while(next_vert != -1 && 
-						apPathParent[src_vert][next_vert] != src_vert)
-					{
-						next_vert = apPathParent[src_vert][next_vert];
-					}
-
-					bool bCanReach = next_vert != -1;
-
-					//can we reach the enemy?
-					//yeah, run, Lola, run...
-					if(bCanReach)
-						RunToWayPoint(actions, index, next_vert);
-
-					//do we see the enemy?
-					//yeah, let's shoot him down :-)
-					if(bCanShoot)
-						actions[static_cast<int>(ACTION::SHOOT)] = true;
-				}
-				else
-					m_AIStates[index-1] = AI_STATE_TYPE::SEARCH_PACK;
-
-			}
-			else
-			{
-				if((1-2*m_aPlayers[index].model.GetOrientation()) != Sign(obj_vec.x)) {
-					if(obj_vec.x>0.0f)
-						actions[static_cast<int>(ACTION::MOVERIGHT)] = true;
-					else
-						actions[static_cast<int>(ACTION::MOVELEFT)]  = true;
-				}
-
-				m_AIStates[index-1] = AI_STATE_TYPE::ATTACK;
-			}
-		}break;
-	//runaway from player_0
-	case AI_STATE_TYPE::RUNAWAY:
-		{
-			view_vec = VECTOR2D(10.0f, 0.0f);
-
-			if(DotProduct(obj_vec, obj_vec)>SQ_FAR_DISTANCE)
-				m_AIStates[index-1] = AI_STATE_TYPE::SEARCH_PACK;
-			else
-			{
-				int dir = Sign(obj_vec.x);
-
-				int u = m_aPlayers[index].nVertexIndex;
-				int iNum = aWayPoints[u].iNumEdges;
-				
-				next_vert = -1;
-				float min = _HUGE;
-
-				for(int i=0; i<iNum; i++)
-					if(apPathDistance[src_vert][aWayPoints[u].aEdges[i]]<min)
-						if(Sign(aWayPoints[src_vert].vPos.x-
-							aWayPoints[aWayPoints[u].aEdges[i]].vPos.x)==dir)
-						{
-							min = apPathDistance[src_vert][aWayPoints[u].aEdges[i]];
-							next_vert = aWayPoints[u].aEdges[i];
-						}
-				
-				if(next_vert != -1)
-					RunToWayPoint(actions, index, next_vert);
-				//we can't run away???
-				//then we die in a fight!!!
-				else
-					m_AIStates[index-1] = AI_STATE_TYPE::ATTACK;
-			}
-		}break;
-	//search for packs to 
-	//increase its resoruces
-	case AI_STATE_TYPE::SEARCH_PACK:
-		{
-			view_vec = VECTOR2D(10.0f, 0.0f);
-			
-			if(ammo_level<50 || health_level<40)
-			{
-				float min = _HUGE;
-				next_vert = -1;
-
-				for(int i=0; i<g_iNumPackPlaces; i++)
-					if(aPacks[i].bActive && 
-						apPathDistance[src_vert][aPacks[i].nVertexIndex]<min)
-					{
-						switch(aPacks[i].type)
-						{
-						case PACK_TYPE::PACK_AMMO:
-							if(ammo_level>60)
-								continue;
-							break;
-						case PACK_TYPE::PACK_GRENADE:
-							if(grenade_level==100)
-								continue;
-							break;
-						case PACK_TYPE::PACK_HEALTH:
-							if(health_level>40)
-								continue;
-							break;
-				case PACK_TYPE::NUM_PACKS: break;
-				}
-						
-						min = apPathDistance[src_vert][aPacks[i].nVertexIndex];
-						next_vert = aPacks[i].nVertexIndex;
-					}
-				
-				if(next_vert != -1)
-				{
-					if(next_vert == src_vert)
-					{
-						VECTOR2D v = aPackPlaces[src_vert]-
-							m_aPlayers[index].body.Pos;
-
-						if(v.x>Epsilon)
-							actions[static_cast<int>(ACTION::MOVERIGHT)] = true;
-						else if(v.x<-Epsilon)
-							actions[static_cast<int>(ACTION::MOVELEFT)]  = true;
-					}
-					else
-					{
-						next_vert = apPathParent[src_vert][next_vert];
-					
-						while(next_vert!=-1
-							&& apPathParent[src_vert][next_vert]!=src_vert)
-						{
-							next_vert = apPathParent[src_vert][next_vert];
-						}
-						
-						if(next_vert != -1)
-							RunToWayPoint(actions, index, next_vert);
-					}
-				}
-				else
-					m_AIStates[index-1] = AI_STATE_TYPE::RUNAWAY;
-			}
-			else
-				m_AIStates[index-1] = AI_STATE_TYPE::PURSUIT;
-		}break;
-	//help to other bots
-	//attack player_0
-	case AI_STATE_TYPE::HELP:
-		{
-		}break;
-	}
-
-	if((actions[static_cast<int>(ACTION::MOVELEFT)] || actions[static_cast<int>(ACTION::MOVERIGHT)]) && 
-		m_aPlayers[index].bBoxCollision)
-	{
-		actions[static_cast<int>(ACTION::JUMP)] = true;
-	}
-
-	view_vec.x = fabs(view_vec.x);
-	m_aPlayers[index].cursor = view_vec;
-}
-///////////////////////////////////////////////////////////////////////////////////////////////////
 HRESULT ShowSplash()
 {
 	if (!g_renderer) {
@@ -2079,23 +1778,4 @@ HRESULT ShowSplash()
 	return S_OK;
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-int ScoreCmp(const void* arg_1, const void* arg_2)
-{
-	int a = *(int*)arg_1;
-	int b = *(int*)arg_2;
-
-	if(m_aDeath[a]<m_aDeath[b])
-		return -1;
-	else if(m_aDeath[a]>m_aDeath[b])
-		return 1;
-	else
-	{
-		if(m_aFrags[a]>m_aFrags[b])
-			return -1;
-		else if(m_aFrags[a]<m_aFrags[b])
-			return 1;
-		else 
-			return 0;
-	}
-}
 

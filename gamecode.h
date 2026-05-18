@@ -1,3 +1,5 @@
+#ifndef GAMECODE_H
+#define GAMECODE_H
 
 #define INITGUID
 
@@ -241,3 +243,56 @@ HRESULT LoadMap(const char* szFileName);
 HRESULT UpdateScene(DWORD dwTime);
 HRESULT UpdateFrame();
 void    Cleanup();
+
+// ----- shared game-state globals (extern; definitions live in their
+// owning subsystem .cpp during the Phase 3h split). -----
+extern PLAYER         m_aPlayers[MAX_PLAYERS];
+extern int            g_iNumPlayers;
+extern int            m_aFrags[MAX_PLAYERS];
+extern int            m_aDeath[MAX_PLAYERS];
+extern ANIMATION      animations[static_cast<int>(ANIMATION_TYPE::NUMANIMATIONS)];
+extern const char*    szMeshFile[];
+
+extern std::vector<RIGIDBODY>              aWalls;
+extern std::vector<RIGIDBODY>              aBodies;
+extern std::vector<VECTOR2D>               aRespawns;
+extern std::vector<PACK>                   aPacks;
+extern std::vector<VECTOR2D>               aPackPlaces;
+extern std::vector<NODE>                   aWayPoints;
+extern std::vector<std::vector<int>>       apPathParent;
+extern std::vector<std::vector<float>>     apPathDistance;
+extern std::vector<std::vector<VECTOR2D>>  g_vWallTex;
+extern std::vector<std::vector<VECTOR2D>>  g_vBodyTex;
+
+extern int  g_iNumWalls;
+extern int  g_iNumWallVertices;
+extern int  g_iNumBodies;
+extern int  g_iNumBodyVertices;
+extern int  g_iNumRespawns;
+extern int  g_iNumPackPlaces;
+extern int  g_iNumWayPoints;
+extern bool g_bCollided;
+extern DWORD g_last_coltime;
+
+extern MATERIAL    g_aMaterials[MAX_MATERIALS];
+extern const char* g_szMaterialFile[MAX_MATERIALS];
+
+extern SDL_Window*   g_window;
+extern SDL_Renderer* g_renderer;
+extern SDL_Texture*  g_pFireTexture;
+extern SDL_Texture*  g_pSmokeTexture;
+
+extern SPRITE rifle, grenade, fire, cur_ptr;
+extern SPRITE ui_health, ui_rifle, ui_grenade;
+extern SPRITE pack_ammo, pack_grenade, pack_health;
+
+extern SDL_Point g_cursor;
+extern VECTOR2D  g_vCenter;
+
+extern TIMER tmFPS;
+extern int   nFrameCount;
+extern int   nFPS;
+extern bool  g_bAddKeyOnce;
+extern bool  g_bRemoveKeyOnce;
+extern bool  g_bShowStat;
+#endif  // GAMECODE_H

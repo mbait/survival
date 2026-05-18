@@ -51,6 +51,8 @@ add_executable(game
     platform/read_ini.cpp        # Phase 1f
     platform/font_cache.cpp      # Phase 1k.2
     gamecode.cpp                 # Phase 1g/1h/1k/1l
+    game/ai.cpp                  # Phase 3h
+    game/effects.cpp             # Phase 3h
     object.cpp                   # Phase 1k
     graphics/sprite2.cpp         # Phase 1i
     graphics/model.cpp           # Phase 1j
