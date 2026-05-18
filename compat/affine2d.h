@@ -34,21 +34,36 @@ struct Affine2D {
 
     // Compose: result transforms a point first by `child`, then by `parent`.
     // i.e. result = parent * child, in column-vector convention.
+    //
+    // Application order on the child's local position: scale -> rotate ->
+    // flip -> translate. This matches the original D3DX matrix chain
+    // (mTran * mScale * mRotY * mRotZ in row-vector terms). It MATTERS
+    // when both the parent is rotated AND flipped — applying flip before
+    // rotate gives the wrong sign on the sin components of the child's
+    // translation, which is what made body-part positions diverge under
+    // a flipped soldier with a tilted torso.
     static Affine2D compose(const Affine2D& parent, const Affine2D& child)
     {
         Affine2D r;
         r.scale     = parent.scale * child.scale;
         r.angle_rad = parent.angle_rad + child.angle_rad;
-        // Child's translation in its local frame; rotate+scale+flip by parent
-        // to lift it into the parent's frame, then add parent's translation.
+        r.flip_x    = parent.flip_x ^ child.flip_x;
+
         const float c = std::cos(parent.angle_rad);
         const float s = std::sin(parent.angle_rad);
-        const float fx = parent.flip_x ? -1.0f : 1.0f;
-        const float px = fx * child.tx * parent.scale;
-        const float py =       child.ty * parent.scale;
-        r.tx = parent.tx + (c * px - s * py);
-        r.ty = parent.ty + (s * px + c * py);
-        r.flip_x = parent.flip_x ^ child.flip_x;
+
+        const float sx = child.tx * parent.scale;
+        const float sy = child.ty * parent.scale;
+
+        // rotate by parent.angle_rad (CCW in math convention)
+        const float rx = c * sx - s * sy;
+        const float ry = s * sx + c * sy;
+
+        // X flip last (matches the row-vector chain ...mScale * mRotY * mRotZ)
+        const float fx = parent.flip_x ? -rx : rx;
+
+        r.tx = parent.tx + fx;
+        r.ty = parent.ty + ry;
         return r;
     }
 };

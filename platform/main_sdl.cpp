@@ -150,6 +150,7 @@ int main(int /*argc*/, char* argv[])
     // SetCursorPos-every-frame hack.
     SDL_SetRelativeMouseMode(SDL_TRUE);
 
+    Uint64 last_ticks = SDL_GetTicks64();
     bool running = true;
     while (running) {
         SDL_Event ev;
@@ -168,9 +169,13 @@ int main(int /*argc*/, char* argv[])
             }
         }
 
-        // Phase 1k.1: skip UpdateScene (would crash without per-frame
-        // physics state for the world we haven't fully ported yet) and
-        // call only UpdateFrame, whose stub just clears + presents.
+        const Uint64 now = SDL_GetTicks64();
+        const DWORD  dt  = static_cast<DWORD>(now - last_ticks);
+        last_ticks = now;
+
+        if (FAILED(UpdateScene(dt))) {
+            running = false;
+        }
         if (FAILED(UpdateFrame())) {
             running = false;
         }

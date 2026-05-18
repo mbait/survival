@@ -122,9 +122,15 @@ HRESULT SPRITE::Draw(BYTE Alpha)
     SDL_SetTextureAlphaMod(pTexture, Alpha);
     SDL_SetTextureBlendMode(pTexture, SDL_BLENDMODE_BLEND);
 
-    const SDL_RendererFlip flip = iOrientation ? SDL_FLIP_HORIZONTAL : SDL_FLIP_NONE;
+    // SDL applies the flip BEFORE the rotation, which reverses the
+    // rotation direction in the flipped frame. The original D3DXMATRIX
+    // chain rotated FIRST and flipped second. Negate the angle when
+    // flipped to keep "torso aim up means torso aim up" for both facings.
+    const bool flip_h = (iOrientation != 0);
+    const float angle = flip_h ? -fRotation : fRotation;
+    const SDL_RendererFlip flip = flip_h ? SDL_FLIP_HORIZONTAL : SDL_FLIP_NONE;
     if (SDL_RenderCopyEx(pRenderer, pTexture, nullptr, &dst,
-                         to_sdl_angle_deg(fRotation), &center, flip) != 0) {
+                         to_sdl_angle_deg(angle), &center, flip) != 0) {
         return E_FAIL;
     }
     return S_OK;
@@ -149,9 +155,10 @@ HRESULT SPRITE::Draw(const Affine2D& parent, BYTE Alpha)
     SDL_SetTextureAlphaMod(pTexture, Alpha);
     SDL_SetTextureBlendMode(pTexture, SDL_BLENDMODE_BLEND);
 
+    const float angle = world.flip_x ? -world.angle_rad : world.angle_rad;
     const SDL_RendererFlip flip = world.flip_x ? SDL_FLIP_HORIZONTAL : SDL_FLIP_NONE;
     if (SDL_RenderCopyEx(pRenderer, pTexture, nullptr, &dst,
-                         to_sdl_angle_deg(world.angle_rad), &center, flip) != 0) {
+                         to_sdl_angle_deg(angle), &center, flip) != 0) {
         return E_FAIL;
     }
     return S_OK;
@@ -172,9 +179,11 @@ HRESULT SPRITE::Draw(float fX, float fY, float fR,
     SDL_SetTextureAlphaMod(pTexture, Alpha);
     SDL_SetTextureBlendMode(pTexture, SDL_BLENDMODE_BLEND);
 
-    const SDL_RendererFlip flip = iOrientation ? SDL_FLIP_HORIZONTAL : SDL_FLIP_NONE;
+    const bool flip_h = (iOrientation != 0);
+    const float angle = flip_h ? -fR : fR;
+    const SDL_RendererFlip flip = flip_h ? SDL_FLIP_HORIZONTAL : SDL_FLIP_NONE;
     if (SDL_RenderCopyEx(pRenderer, pTexture, nullptr, &dst,
-                         to_sdl_angle_deg(fR), &center, flip) != 0) {
+                         to_sdl_angle_deg(angle), &center, flip) != 0) {
         return E_FAIL;
     }
     return S_OK;
