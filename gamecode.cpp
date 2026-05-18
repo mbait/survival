@@ -29,13 +29,13 @@ const char *szMeshFile[] = {
 	{"data/meshes/ragdoll/foot_mesh_c.dat"}
 };
 
-ANIMATION animations[NUMANIMATIONS] = {
-	{ 0,  0,  1.0f,     1, ANIMATION_SINGLE}, //ANIMATION_IDLE
-	{ 6, 10, 0.01f,  500,  ANIMATION_LOOP},	  //ANIMATION_RUN
-	{ 1,  5, 0.01f, 1000,  ANIMATION_RETURN}, //ANIMATION_JUMP
-	{13, 15, 0.01f,  500,  ANIMATION_SINGLE}, //ANIMATION_WJUMP
-	{11, 11,  1.0f,    1,  ANIMATION_SINGLE}, //ANIMATION_SLIDE
-	{12, 12,  1.0f,    1,  ANIMATION_SINGLE}  //ANIMATION_FALL
+ANIMATION animations[static_cast<int>(ANIMATION_TYPE::NUMANIMATIONS)] = {
+	{ 0,  0,  1.0f,     1, ANIMATION_SINGLE}, //ANIMATION_TYPE::ANIMATION_IDLE
+	{ 6, 10, 0.01f,  500,  ANIMATION_LOOP},	  //ANIMATION_TYPE::ANIMATION_RUN
+	{ 1,  5, 0.01f, 1000,  ANIMATION_RETURN}, //ANIMATION_TYPE::ANIMATION_JUMP
+	{13, 15, 0.01f,  500,  ANIMATION_SINGLE}, //ANIMATION_TYPE::ANIMATION_WJUMP
+	{11, 11,  1.0f,    1,  ANIMATION_SINGLE}, //ANIMATION_TYPE::ANIMATION_SLIDE
+	{12, 12,  1.0f,    1,  ANIMATION_SINGLE}  //ANIMATION_TYPE::ANIMATION_FALL
 };
 
 // SDL render context — borrowed from the platform layer; we don't own these.
@@ -341,8 +341,8 @@ HRESULT PLAYER::Init(SDL_Renderer* pRenderer,
 	//////////////////////////////
 
 	health	= c_NumHealth;
-	ammo[RIFLE]		= c_NumRifleAmmo;
-	ammo[GRENADE]	= c_NumGrenades;
+	ammo[static_cast<int>(WEAPON::RIFLE)]		= c_NumRifleAmmo;
+	ammo[static_cast<int>(WEAPON::GRENADE)]	= c_NumGrenades;
 
     return S_OK;
 }
@@ -526,7 +526,7 @@ void PLAYER::Update(DWORD dwTime, bool *actions)
 	bool bCanJump = false;
 	if(bCollided)
 	{
-		coll = VERT;
+		coll = COLLISION::VERT;
 		bCanJump = true;
 
 		if(body.Velocity.y>FALL_MINVEL)
@@ -544,7 +544,7 @@ void PLAYER::Update(DWORD dwTime, bool *actions)
 
 		VECTOR2D B, F;
 		if(DotProduct(Axis, VECTOR2D(0.0f, -1.0f)))
-			coll = HORZ;
+			coll = COLLISION::HORZ;
 		
 		B = T*BOUNCE;
 		F = VECTOR2D(N.x*(1-FRICTION), N.y);
@@ -554,7 +554,7 @@ void PLAYER::Update(DWORD dwTime, bool *actions)
 	}
 	else
 	{
-		coll = NONE;
+		coll = COLLISION::NONE;
 		
 		body.Move(VECTOR2D(0.0f, DEPTH_EPSILON));
 		
@@ -567,7 +567,7 @@ void PLAYER::Update(DWORD dwTime, bool *actions)
 			{
 				bCollided = true;
 				bCanJump = true;
-				coll = HORZ;
+				coll = COLLISION::HORZ;
 				Axis = MTD;
 				break;
 			}
@@ -590,7 +590,7 @@ void PLAYER::Update(DWORD dwTime, bool *actions)
 			body.fAngVelocity = 0.0f;
 			Axis += MTD*t;
 			bCollided = true;
-			coll = HORZ;
+			coll = COLLISION::HORZ;
 
 			bBoxCollision = true;
 		}
@@ -608,7 +608,7 @@ void PLAYER::Update(DWORD dwTime, bool *actions)
 			{
 				bCollided = true;
 				bCanJump = true;
-				coll = HORZ;
+				coll = COLLISION::HORZ;
 				Axis = MTD;
 				break;
 
@@ -660,54 +660,54 @@ void PLAYER::Update(DWORD dwTime, bool *actions)
 	nVertexIndex = index;
 
 	//resolve soldat actions (aka keyboard state :-))
-	state = IDLE;
+	state = STATE::IDLE;
 	
-	if(actions[MOVELEFT])
+	if(actions[static_cast<int>(ACTION::MOVELEFT)])
 	{
-		if(coll != NONE)
+		if(coll != COLLISION::NONE)
 		{
 			body.Velocity.x -= RUN_ACC*dwTime/1000.0f;
 			if(body.Velocity.x < -RUN_MAXVEL)
 				body.Velocity.x = -RUN_MAXVEL;
 
-			state = RUN;
+			state = STATE::RUN;
 		}
 			else
 				if(body.Velocity.x>-FLY_MAXVEL)
 					body.Velocity.x -= FLY_ACC*dwTime/1000.0f;
 	}
-	if(actions[MOVERIGHT])
+	if(actions[static_cast<int>(ACTION::MOVERIGHT)])
 	{
-		if(coll != NONE)
+		if(coll != COLLISION::NONE)
 		{
 			body.Velocity.x += RUN_ACC*dwTime/1000.0f;
 			if(body.Velocity.x > RUN_MAXVEL)
 				body.Velocity.x = RUN_MAXVEL;
 
-			state = RUN;
+			state = STATE::RUN;
 		}
 		else
 			if(body.Velocity.x<FLY_MAXVEL)
 				body.Velocity.x += FLY_ACC*dwTime/1000.0f;
 	}
-	if(actions[JUMP])
+	if(actions[static_cast<int>(ACTION::JUMP)])
 	{
-		if(bCanJump && coll == HORZ && bJumpKeyOnce)
+		if(bCanJump && coll == COLLISION::HORZ && bJumpKeyOnce)
 		{
 			body.Velocity.y -= JUMP_ACC;
 			//body.Move(Axis*20);
 			body.Move(VECTOR2D(0.0f, -20.0f));
 	
-			model.SetAnimation(&animations[ANIMATION_JUMP]);
+			model.SetAnimation(&animations[static_cast<int>(ANIMATION_TYPE::ANIMATION_JUMP)]);
 			model.StartAnimation();
 
-			state = FLY;
+			state = STATE::FLY;
 			bJumpKeyOnce = false;
 		}
 	}
 	else
 		bJumpKeyOnce = true;
-	if(actions[WJUMP])
+	if(actions[static_cast<int>(ACTION::WJUMP)])
 	{
 		if(bCanJump && bWJumpKeyOnce)
 		{
@@ -727,10 +727,10 @@ void PLAYER::Update(DWORD dwTime, bool *actions)
 				body.Velocity += VECTOR2D(-vsign, -1.0f)*WJUMP_ACC;
 			body.Move(Axis*10);
 
-			model.SetAnimation(&animations[ANIMATION_WJUMP]);
+			model.SetAnimation(&animations[static_cast<int>(ANIMATION_TYPE::ANIMATION_WJUMP)]);
 			model.StartAnimation();
 
-			state = FLY;
+			state = STATE::FLY;
 			bWJumpKeyOnce = false;
 		}
 	}
@@ -738,50 +738,50 @@ void PLAYER::Update(DWORD dwTime, bool *actions)
 		bWJumpKeyOnce = true;
     	
 	//addition states
-	if(state == IDLE && Length(body.Velocity)>40.0f)
-		state = SLIDE;
-	if(state == SLIDE && !bCollided) {
+	if(state == STATE::IDLE && Length(body.Velocity)>40.0f)
+		state = STATE::SLIDE;
+	if(state == STATE::SLIDE && !bCollided) {
 		if(body.Velocity.y<0)
-			state = FLY;
+			state = STATE::FLY;
 		else
-			state = FALL;
+			state = STATE::FALL;
 	}
 		
 	//resolve soldat state
 	switch(state)
 	{
-	case IDLE:
+	case STATE::IDLE:
 		{
-			model.SetAnimation(&animations[ANIMATION_IDLE]);
+			model.SetAnimation(&animations[static_cast<int>(ANIMATION_TYPE::ANIMATION_IDLE)]);
 			model.StartAnimation();
 		}break;
-	case SLIDE:
+	case STATE::SLIDE:
 		{
-			model.SetAnimation(&animations[ANIMATION_SLIDE]);
+			model.SetAnimation(&animations[static_cast<int>(ANIMATION_TYPE::ANIMATION_SLIDE)]);
 			model.StartAnimation();
 		}break;
-	case RUN:
+	case STATE::RUN:
 		{
-			if(prev_state != RUN)
+			if(prev_state != STATE::RUN)
 			{
-				model.SetAnimation(&animations[ANIMATION_RUN]);
+				model.SetAnimation(&animations[static_cast<int>(ANIMATION_TYPE::ANIMATION_RUN)]);
 				model.StartAnimation();
 			}
 		}break;
-	case FALL:
+	case STATE::FALL:
 		{
-			model.SetAnimation(&animations[ANIMATION_FALL]);
+			model.SetAnimation(&animations[static_cast<int>(ANIMATION_TYPE::ANIMATION_FALL)]);
 			model.StartAnimation();
 		}break;
-	case FLY:
+	case STATE::FLY:
 		{
 			if(!model.IsAnimated())
 			{
-				model.SetAnimation(&animations[ANIMATION_FALL]);
+				model.SetAnimation(&animations[static_cast<int>(ANIMATION_TYPE::ANIMATION_FALL)]);
 				model.StartAnimation();
 			}
 		}
-	case NUMSTATES: break;
+	case STATE::NUMSTATES: break;
 	}
 	prev_state = state;
 	
@@ -872,7 +872,7 @@ void PLAYER::Update(DWORD dwTime, bool *actions)
 	model.GetPart(BODY)->SetRotation(o*fTheta+
 		PI*model.GetOrientation());
 	//resolve mouse state: shooting and etc.
-	if(actions[SHOOT] && tmShoot.Delta()>50 && ammo[RIFLE]>0)
+	if(actions[static_cast<int>(ACTION::SHOOT)] && tmShoot.Delta()>50 && ammo[static_cast<int>(WEAPON::RIFLE)]>0)
 	{
 		bShooting = true;
 		
@@ -911,7 +911,7 @@ void PLAYER::Update(DWORD dwTime, bool *actions)
 				
 		tmShoot.Reset();
 
-		ammo[RIFLE]--;
+		ammo[static_cast<int>(WEAPON::RIFLE)]--;
 	}
 	else
 	{
@@ -919,7 +919,7 @@ void PLAYER::Update(DWORD dwTime, bool *actions)
 		tmShoot.Update();
 	}
 
-	if(actions[ALTSHOOT] && tmAltShoot.Delta()>2500 && ammo[GRENADE]>0)
+	if(actions[static_cast<int>(ACTION::ALTSHOOT)] && tmAltShoot.Delta()>2500 && ammo[static_cast<int>(WEAPON::GRENADE)]>0)
 	{
 		//init grenade
 		if(DotProduct(cursor, cursor)>2500)
@@ -936,7 +936,7 @@ void PLAYER::Update(DWORD dwTime, bool *actions)
 		tmGrenade.Reset();
 		tmAltShoot.Reset();
 
-		ammo[GRENADE]--;
+		ammo[static_cast<int>(WEAPON::GRENADE)]--;
 	}
 	else
 		tmAltShoot.Update();
@@ -950,25 +950,25 @@ void PLAYER::Update(DWORD dwTime, bool *actions)
 			{
 				switch(aPacks[i].type)
 				{
-				case PACK_AMMO:
+				case PACK_TYPE::PACK_AMMO:
 					{
-						if(ammo[RIFLE] == c_NumRifleAmmo)
+						if(ammo[static_cast<int>(WEAPON::RIFLE)] == c_NumRifleAmmo)
 							continue;
 						
-						ammo[RIFLE] += PACK_AMMO_SIZE;
-						if(ammo[RIFLE]>c_NumRifleAmmo)
-							ammo[RIFLE] = c_NumRifleAmmo;
+						ammo[static_cast<int>(WEAPON::RIFLE)] += PACK_AMMO_SIZE;
+						if(ammo[static_cast<int>(WEAPON::RIFLE)]>c_NumRifleAmmo)
+							ammo[static_cast<int>(WEAPON::RIFLE)] = c_NumRifleAmmo;
 					}break;
-				case PACK_GRENADE:
+				case PACK_TYPE::PACK_GRENADE:
 					{
-						if(ammo[GRENADE] == c_NumGrenades)
+						if(ammo[static_cast<int>(WEAPON::GRENADE)] == c_NumGrenades)
 							continue;
 						
-						ammo[GRENADE] += PACK_GRENADE_SIZE;
-						if(ammo[GRENADE]>c_NumGrenades)
-							ammo[GRENADE] = c_NumGrenades;
+						ammo[static_cast<int>(WEAPON::GRENADE)] += PACK_GRENADE_SIZE;
+						if(ammo[static_cast<int>(WEAPON::GRENADE)]>c_NumGrenades)
+							ammo[static_cast<int>(WEAPON::GRENADE)] = c_NumGrenades;
 					}break;
-				case PACK_HEALTH:
+				case PACK_TYPE::PACK_HEALTH:
 					{
 						if(health == c_NumHealth)
 							continue;
@@ -977,7 +977,7 @@ void PLAYER::Update(DWORD dwTime, bool *actions)
 						if(health>c_NumHealth)
 							health = c_NumHealth;
 					}break;
-				case NUM_PACKS: break;
+				case PACK_TYPE::NUM_PACKS: break;
 				}
 
 				aPacks[i].bActive = false;
@@ -1026,26 +1026,26 @@ HRESULT UpdateScene(DWORD dwTime)
 	// pointer into that buffer indexed by SDL_SCANCODE_*.
 	const Uint8* keystate = SDL_GetKeyboardState(nullptr);
 
-	bool actions[NUMACTIONS];
+	bool actions[static_cast<int>(ACTION::NUMACTIONS)];
 	memset(actions, 0, sizeof(actions));
 
 	//resolve keyboard state
 	if(keystate[SDL_SCANCODE_A])
 	{
-		m_aPlayers[0].dir = LEFT;
-		actions[MOVELEFT] = true;
+		m_aPlayers[0].dir = DIRECTION::LEFT;
+		actions[static_cast<int>(ACTION::MOVELEFT)] = true;
 	}
 	if(keystate[SDL_SCANCODE_D])
 	{
-		m_aPlayers[0].dir = RIGHT;
-		actions[MOVERIGHT] = true;
+		m_aPlayers[0].dir = DIRECTION::RIGHT;
+		actions[static_cast<int>(ACTION::MOVERIGHT)] = true;
 	}
 	if(keystate[SDL_SCANCODE_W])
 	{
-		actions[JUMP] = true;
+		actions[static_cast<int>(ACTION::JUMP)] = true;
 	}
 	if(keystate[SDL_SCANCODE_Q])
-		actions[WJUMP] = true;
+		actions[static_cast<int>(ACTION::WJUMP)] = true;
 
 	//none-control keystate
 	if(keystate[SDL_SCANCODE_INSERT])
@@ -1083,9 +1083,9 @@ HRESULT UpdateScene(DWORD dwTime)
 	const Uint32 buttons = SDL_GetRelativeMouseState(&mouse_dx, &mouse_dy);
 
 	if(buttons & SDL_BUTTON(SDL_BUTTON_LEFT))
-		actions[SHOOT] = true;
+		actions[static_cast<int>(ACTION::SHOOT)] = true;
 	if(buttons & SDL_BUTTON(SDL_BUTTON_RIGHT))
-		actions[ALTSHOOT] = true;
+		actions[static_cast<int>(ACTION::ALTSHOOT)] = true;
 
 	//update cursor pos
 	g_cursor.x = (g_cursor.x+mouse_dx);
@@ -1170,7 +1170,7 @@ HRESULT UpdateScene(DWORD dwTime)
 	for(int i=0; i<g_iNumPackPlaces; i++) {
 		if(!aPacks[i].bActive) {
 			if(aPacks[i].tmReset.Delta()>60000) {
-				aPacks[i].type = (PACK_TYPE)(int)(RANDOM*static_cast<int>(NUM_PACKS));
+				aPacks[i].type = (PACK_TYPE)(int)(RANDOM*static_cast<int>(PACK_TYPE::NUM_PACKS));
 				aPacks[i].bActive = true;
 			} else {
 				aPacks[i].tmReset.Update();
@@ -1272,9 +1272,9 @@ HRESULT UpdateFrame()
 		const VECTOR2D pos = aPackPlaces[i] - vOffset;
 		SPRITE* spr = nullptr;
 		switch (aPacks[i].type) {
-			case PACK_AMMO:    spr = &pack_ammo;    break;
-			case PACK_GRENADE: spr = &pack_grenade; break;
-			case PACK_HEALTH:  spr = &pack_health;  break;
+			case PACK_TYPE::PACK_AMMO:    spr = &pack_ammo;    break;
+			case PACK_TYPE::PACK_GRENADE: spr = &pack_grenade; break;
+			case PACK_TYPE::PACK_HEALTH:  spr = &pack_health;  break;
 			default: continue;
 		}
 		spr->Draw(pos.x, pos.y, 0.0f, spr->GetRotationX(), spr->GetRotationY(), 0.8f);
@@ -1372,13 +1372,13 @@ HRESULT UpdateFrame()
 		                    g_iScreenHeight - ui_health.iHeight + (ui_health.iWidth >> 2),
 		                    255, 255, 0);
 
-		std::snprintf(buf, sizeof(buf), "%d", m_aPlayers[0].ammo[RIFLE]);
+		std::snprintf(buf, sizeof(buf), "%d", m_aPlayers[0].ammo[static_cast<int>(WEAPON::RIFLE)]);
 		platform::draw_text(g_renderer, platform::FONT_UI, buf,
 		                    ui_rifle.iWidth,
 		                    g_iScreenHeight - ui_rifle.iHeight + (ui_rifle.iHeight >> 2),
 		                    255, 255, 0);
 
-		std::snprintf(buf, sizeof(buf), "%d", m_aPlayers[0].ammo[GRENADE]);
+		std::snprintf(buf, sizeof(buf), "%d", m_aPlayers[0].ammo[static_cast<int>(WEAPON::GRENADE)]);
 		platform::draw_text(g_renderer, platform::FONT_UI, buf,
 		                    g_iScreenWidth - (ui_grenade.iWidth >> 1),
 		                    g_iScreenHeight - ui_grenade.iHeight + (ui_grenade.iHeight >> 2),
@@ -1416,7 +1416,7 @@ HRESULT AddPlayer()
 	}
 
 	m_aPlayers[index].model.SetScale(0.4f);
-	m_aPlayers[index].model.SetAnimation(&animations[ANIMATION_IDLE]);
+	m_aPlayers[index].model.SetAnimation(&animations[static_cast<int>(ANIMATION_TYPE::ANIMATION_IDLE)]);
 	m_aPlayers[index].model.StartAnimation();
 
 	m_aPlayers[index].tmAltShoot.LastTickCount += 2200;
@@ -1466,7 +1466,7 @@ void RespawnPlayer(PLAYER* player)
 		return;
 
 	if(player->ID>0)
-		m_AIStates[player->ID-1] = PURSUIT;
+		m_AIStates[player->ID-1] = AI_STATE_TYPE::PURSUIT;
 
 	int index = (int)(RANDOM*g_iNumRespawns);
 
@@ -1480,12 +1480,12 @@ void RespawnPlayer(PLAYER* player)
 		aRespawns[index]);
 	player->body.Rotate(-player->body.fOrientation);
 
-	player->ammo[RIFLE] = player->c_NumRifleAmmo;
-	player->ammo[GRENADE] = 2;
+	player->ammo[static_cast<int>(WEAPON::RIFLE)] = player->c_NumRifleAmmo;
+	player->ammo[static_cast<int>(WEAPON::GRENADE)] = 2;
 	player->health = player->c_NumHealth;
 	
-	/*player->ammo[RIFLE] = 0;
-	player->ammo[GRENADE] = 0;
+	/*player->ammo[static_cast<int>(WEAPON::RIFLE)] = 0;
+	player->ammo[static_cast<int>(WEAPON::GRENADE)] = 0;
 	player->health = 10;
 	*/
 
@@ -1622,7 +1622,7 @@ HRESULT LoadMap(const char* szFileName)
 	if(!f)
 		return E_FAIL;
 
-	for (int i = 0; i < NUM_MATERIALS; i++) {
+	for (int i = 0; i < static_cast<int>(MATERIAL_TYPE::NUM_MATERIALS); i++) {
 		fscanf(f, "%f%f", &g_aMaterials[i].fWidth, &g_aMaterials[i].fHeight);
 		if (g_szMaterialFile[i] == nullptr) {
 			g_aMaterials[i].pTexture = nullptr;
@@ -1731,7 +1731,7 @@ HRESULT LoadMap(const char* szFileName)
 		fscanf(f, "%f%f", &aPackPlaces[i].x, 
 			&aPackPlaces[i].y);
 
-		aPacks[i].type = (PACK_TYPE)(int)(RANDOM*static_cast<int>(NUM_PACKS));
+		aPacks[i].type = (PACK_TYPE)(int)(RANDOM*static_cast<int>(PACK_TYPE::NUM_PACKS));
 		aPacks[i].bActive = true;
 	}
 	//===============end packplaces=========//
@@ -1884,22 +1884,22 @@ void RunToWayPoint(bool *actions, int index, int WPIndex)
 		aWayPoints[m_aPlayers[index].nVertexIndex].vPos;
 						
 	if(dst_vec.x>0.0f)
-		actions[MOVERIGHT] = true;
+		actions[static_cast<int>(ACTION::MOVERIGHT)] = true;
 	else if(dst_vec.x<0.0f)
-		actions[MOVELEFT]  = true;
+		actions[static_cast<int>(ACTION::MOVELEFT)]  = true;
 
 	float fTheta = atan2(-dst_vec.y, dst_vec.x);
 	if(fTheta>Pi)
 		fTheta = -fTheta;
 	fTheta -= Pi/2.0f;
 
-	if(fabs(fTheta)<Pi/4.0f && m_aPlayers[index].prev_state != FLY)
-		actions[JUMP] = true;
+	if(fabs(fTheta)<Pi/4.0f && m_aPlayers[index].prev_state != STATE::FLY)
+		actions[static_cast<int>(ACTION::JUMP)] = true;
 }
 
 void GetAIActions(int index, bool *actions)
 {
-	memset(actions, false, NUMACTIONS);
+	memset(actions, false, static_cast<size_t>(ACTION::NUMACTIONS));
 	
 	if(!g_iNumWayPoints)
 		return;
@@ -1910,9 +1910,9 @@ void GetAIActions(int index, bool *actions)
 
 	bool bCanShoot = m_aPlayers[index].iViewSoldierID == 0;
 
-	int ammo_level = m_aPlayers[index].ammo[RIFLE]*
+	int ammo_level = m_aPlayers[index].ammo[static_cast<int>(WEAPON::RIFLE)]*
 		100/PLAYER::c_NumRifleAmmo;
-	int grenade_level = m_aPlayers[index].ammo[GRENADE]*
+	int grenade_level = m_aPlayers[index].ammo[static_cast<int>(WEAPON::GRENADE)]*
 		100/PLAYER::c_NumGrenades;
 	int health_level = m_aPlayers[index].health*
 		100/PLAYER::c_NumHealth;
@@ -1926,27 +1926,27 @@ void GetAIActions(int index, bool *actions)
 	switch(m_AIStates[index-1])
 	{
 	//attack the player_0
-	case ATTACK:
+	case AI_STATE_TYPE::ATTACK:
 		{
 			view_vec = obj_vec;
 			if((ammo_level<20 && grenade_level==0) || health_level<15)
-				m_AIStates[index-1] = RUNAWAY;
+				m_AIStates[index-1] = AI_STATE_TYPE::RUNAWAY;
 			else
 			{
 				if(bCanShoot)
 				{
-					actions[SHOOT] = true;
+					actions[static_cast<int>(ACTION::SHOOT)] = true;
 
 					if(DotProduct(obj_vec, obj_vec)>SQ_NEAR_DISTANCE)
 						if((int)(RANDOM*10) == 5 && grenade_level>0)
-							actions[ALTSHOOT] = true;
+							actions[static_cast<int>(ACTION::ALTSHOOT)] = true;
 				}
 				else
-					m_AIStates[index-1] = PURSUIT;
+					m_AIStates[index-1] = AI_STATE_TYPE::PURSUIT;
 			}
 		}break;
 	//look for player_0
-	case PURSUIT:
+	case AI_STATE_TYPE::PURSUIT:
 		{
 			view_vec = obj_vec;
 			dst_vert = m_aPlayers[0].nVertexIndex;
@@ -1973,31 +1973,31 @@ void GetAIActions(int index, bool *actions)
 					//do we see the enemy?
 					//yeah, let's shoot him down :-)
 					if(bCanShoot)
-						actions[SHOOT] = true;
+						actions[static_cast<int>(ACTION::SHOOT)] = true;
 				}
 				else
-					m_AIStates[index-1] = SEARCH_PACK;
+					m_AIStates[index-1] = AI_STATE_TYPE::SEARCH_PACK;
 
 			}
 			else
 			{
 				if((1-2*m_aPlayers[index].model.GetOrientation()) != Sign(obj_vec.x)) {
 					if(obj_vec.x>0.0f)
-						actions[MOVERIGHT] = true;
+						actions[static_cast<int>(ACTION::MOVERIGHT)] = true;
 					else
-						actions[MOVELEFT]  = true;
+						actions[static_cast<int>(ACTION::MOVELEFT)]  = true;
 				}
 
-				m_AIStates[index-1] = ATTACK;
+				m_AIStates[index-1] = AI_STATE_TYPE::ATTACK;
 			}
 		}break;
 	//runaway from player_0
-	case RUNAWAY:
+	case AI_STATE_TYPE::RUNAWAY:
 		{
 			view_vec = VECTOR2D(10.0f, 0.0f);
 
 			if(DotProduct(obj_vec, obj_vec)>SQ_FAR_DISTANCE)
-				m_AIStates[index-1] = SEARCH_PACK;
+				m_AIStates[index-1] = AI_STATE_TYPE::SEARCH_PACK;
 			else
 			{
 				int dir = Sign(obj_vec.x);
@@ -2022,12 +2022,12 @@ void GetAIActions(int index, bool *actions)
 				//we can't run away???
 				//then we die in a fight!!!
 				else
-					m_AIStates[index-1] = ATTACK;
+					m_AIStates[index-1] = AI_STATE_TYPE::ATTACK;
 			}
 		}break;
 	//search for packs to 
 	//increase its resoruces
-	case SEARCH_PACK:
+	case AI_STATE_TYPE::SEARCH_PACK:
 		{
 			view_vec = VECTOR2D(10.0f, 0.0f);
 			
@@ -2042,19 +2042,19 @@ void GetAIActions(int index, bool *actions)
 					{
 						switch(aPacks[i].type)
 						{
-						case PACK_AMMO:
+						case PACK_TYPE::PACK_AMMO:
 							if(ammo_level>60)
 								continue;
 							break;
-						case PACK_GRENADE:
+						case PACK_TYPE::PACK_GRENADE:
 							if(grenade_level==100)
 								continue;
 							break;
-						case PACK_HEALTH:
+						case PACK_TYPE::PACK_HEALTH:
 							if(health_level>40)
 								continue;
 							break;
-				case NUM_PACKS: break;
+				case PACK_TYPE::NUM_PACKS: break;
 				}
 						
 						min = apPathDistance[src_vert][aPacks[i].nVertexIndex];
@@ -2069,9 +2069,9 @@ void GetAIActions(int index, bool *actions)
 							m_aPlayers[index].body.Pos;
 
 						if(v.x>Epsilon)
-							actions[MOVERIGHT] = true;
+							actions[static_cast<int>(ACTION::MOVERIGHT)] = true;
 						else if(v.x<-Epsilon)
-							actions[MOVELEFT]  = true;
+							actions[static_cast<int>(ACTION::MOVELEFT)]  = true;
 					}
 					else
 					{
@@ -2088,22 +2088,22 @@ void GetAIActions(int index, bool *actions)
 					}
 				}
 				else
-					m_AIStates[index-1] = RUNAWAY;
+					m_AIStates[index-1] = AI_STATE_TYPE::RUNAWAY;
 			}
 			else
-				m_AIStates[index-1] = PURSUIT;
+				m_AIStates[index-1] = AI_STATE_TYPE::PURSUIT;
 		}break;
 	//help to other bots
 	//attack player_0
-	case HELP:
+	case AI_STATE_TYPE::HELP:
 		{
 		}break;
 	}
 
-	if((actions[MOVELEFT] || actions[MOVERIGHT]) && 
+	if((actions[static_cast<int>(ACTION::MOVELEFT)] || actions[static_cast<int>(ACTION::MOVERIGHT)]) && 
 		m_aPlayers[index].bBoxCollision)
 	{
-		actions[JUMP] = true;
+		actions[static_cast<int>(ACTION::JUMP)] = true;
 	}
 
 	view_vec.x = fabs(view_vec.x);
