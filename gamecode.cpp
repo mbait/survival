@@ -64,17 +64,17 @@ const char *g_szMaterialFile[MAX_MATERIALS] =
 
 //game objects
 PLAYER			m_aPlayers[MAX_PLAYERS];
-RIGIDBODY		*aWalls;
-RIGIDBODY		*aBodies;
-VECTOR2D		*aRespawns;
-PACK			*aPacks;
-VECTOR2D		*aPackPlaces;
-NODE			*aWayPoints;
-int				**apPathParent;
-float			**apPathDistance;
+std::vector<RIGIDBODY>            aWalls;
+std::vector<RIGIDBODY>            aBodies;
+std::vector<VECTOR2D>             aRespawns;
+std::vector<PACK>                 aPacks;
+std::vector<VECTOR2D>             aPackPlaces;
+std::vector<NODE>                 aWayPoints;
+std::vector<std::vector<int>>     apPathParent;
+std::vector<std::vector<float>>   apPathDistance;
 int				m_aFrags[MAX_PLAYERS];
 int				m_aDeath[MAX_PLAYERS];
-AI_STATE_TYPE	*m_AIStates;
+std::vector<AI_STATE_TYPE>        m_AIStates;
 
 //game sprites
 SPRITE	rifle;
@@ -101,8 +101,8 @@ PARTICLE *g_pCustom;
 int g_CustomParticleCnt = 0;
 
 //world data
-VECTOR2D **g_vWallTex = 0;
-VECTOR2D **g_vBodyTex = 0;
+std::vector<std::vector<VECTOR2D>> g_vWallTex;
+std::vector<std::vector<VECTOR2D>> g_vBodyTex;
 int g_iNumPlayers = 0;
 int g_iNumWalls = 0;
 int g_iNumWallVertices = 0;
@@ -213,16 +213,14 @@ HRESULT PLAYER::Init(SDL_Renderer* pRenderer,
 
 	int iNumVertices = 0;
 	f >> iNumVertices;
-	VECTOR2D *aVertices = new VECTOR2D[iNumVertices];
+	std::vector<VECTOR2D> aVertices(iNumVertices);
 	float x, y;
-	for(int i=0; i<iNumVertices; i++)
-	{
+	for (int i = 0; i < iNumVertices; i++) {
 		f >> x >> y;
 		aVertices[i] = VECTOR2D(x, y);
 	}
 	f.close();
-	body = RIGIDBODY(aVertices, iNumVertices);
-	delete [] aVertices;
+	body = RIGIDBODY(aVertices.data(), iNumVertices);
 
 	//////load ragdoll mesh///////
 	float minx = _HUGE, miny = _HUGE;
@@ -253,12 +251,13 @@ HRESULT PLAYER::Init(SDL_Renderer* pRenderer,
 		f.close();
 		
 		iNumVertices = 4;
-		aVertices = new VECTOR2D[iNumVertices];
-		aVertices[0] = VECTOR2D();
-		aVertices[1] = VECTOR2D(maxx-minx, 0.0f);
-		aVertices[2] = VECTOR2D(maxx-minx, maxy-miny);
-		aVertices[3] = VECTOR2D(0.0f, maxy-miny);
-		ragdoll[i] = RIGIDBODY(aVertices, iNumVertices);
+		aVertices.assign({
+			VECTOR2D(),
+			VECTOR2D(maxx - minx, 0.0f),
+			VECTOR2D(maxx - minx, maxy - miny),
+			VECTOR2D(0.0f, maxy - miny),
+		});
+		ragdoll[i] = RIGIDBODY(aVertices.data(), iNumVertices);
 		
 		float dx = (model.GetPart(i)->GetRotationX()-
 			(model.GetPart(i)->iWidth>>1))*0.4f;
@@ -269,10 +268,9 @@ HRESULT PLAYER::Init(SDL_Renderer* pRenderer,
 		ragdoll[i].Pos += vOffset;
 		ragdoll[i].fRestitution = 0.6f;
 		ragdoll[i].fFriction = 0.01f;
-		ragdoll[i] = RIGIDBODY(aVertices, iNumVertices);
+		ragdoll[i] = RIGIDBODY(aVertices.data(), iNumVertices);
 		ragdoll[i].fRestitution = 0.6f;
 		ragdoll[i].fFriction = 0.01f;
-		delete [] aVertices;
 	}
 	
 	//head -> body
@@ -1258,13 +1256,13 @@ HRESULT UpdateFrame()
 	for (int i = 0; i < g_iNumWalls; i++) {
 		render_textured_fan(g_renderer,
 		                    g_aMaterials[aWalls[i].lMaterialID].pTexture,
-		                    aWalls[i].lpVertices, g_vWallTex[i],
+		                    aWalls[i].lpVertices.data(), g_vWallTex[i].data(),
 		                    aWalls[i].iNumVertices, vOffset);
 	}
 	for (int i = 0; i < g_iNumBodies; i++) {
 		render_textured_fan(g_renderer,
 		                    g_aMaterials[aBodies[i].lMaterialID].pTexture,
-		                    aBodies[i].lpVertices, g_vBodyTex[i],
+		                    aBodies[i].lpVertices.data(), g_vBodyTex[i].data(),
 		                    aBodies[i].iNumVertices, vOffset);
 	}
 
@@ -1423,36 +1421,29 @@ HRESULT AddPlayer()
 
 	m_aPlayers[index].tmAltShoot.LastTickCount += 2200;
 
-	VECTOR2D *aVertices = new VECTOR2D[6];
+	std::vector<VECTOR2D> aVertices(6);
 	std::ifstream f("data/meshes/grenade.dat");
-	if(!f)
+	if (!f)
 		return E_FAIL;
 
 	int iNumVerts;
 	float x, y;
 
 	f >> iNumVerts;
-	for(int i=0; i<iNumVerts; i++)
-	{
+	for (int i = 0; i < iNumVerts; i++) {
 		f >> x >> y;
 		aVertices[i] = VECTOR2D(x, y);
 	}
 	f.close();
 
-	m_aPlayers[index].grenade_body = RIGIDBODY(aVertices,
-		iNumVerts);
+	m_aPlayers[index].grenade_body = RIGIDBODY(aVertices.data(), iNumVerts);
 	m_aPlayers[index].grenade_body.fRestitution = 0.6f;
-	delete [] aVertices;
 
 	m_aFrags[index] = 0;
 	m_aDeath[index] = 0;
 
-	if(g_iNumPlayers>0)
-	{
-		if(!m_AIStates)
-			m_AIStates = (AI_STATE_TYPE*)malloc(sizeof(AI_STATE_TYPE));
-		else
-			m_AIStates = (AI_STATE_TYPE*)realloc(m_AIStates, sizeof(AI_STATE_TYPE)*g_iNumPlayers);
+	if (g_iNumPlayers > 0) {
+		m_AIStates.resize(g_iNumPlayers);
 	}
 
 	g_iNumPlayers++;
@@ -1645,90 +1636,76 @@ HRESULT LoadMap(const char* szFileName)
 	if(!f)
 		return E_FAIL;
 
-	LPVECTOR2D aVertices;
 	int iNumVerts;
 
 	int iNumWalls;
 	f >> iNumWalls;
 	g_iNumWalls = iNumWalls;
-	aWalls = new RIGIDBODY[iNumWalls];
-	g_vWallTex = new LPVECTOR2D[iNumWalls];
+	aWalls.assign(iNumWalls, RIGIDBODY{});
+	g_vWallTex.assign(iNumWalls, std::vector<VECTOR2D>{});
 	float x, y;
 	int matID;
-	for(int i=0; i<iNumWalls; i++)
-	{
+	for (int i = 0; i < iNumWalls; i++) {
 		f >> iNumVerts;
 		f >> matID;
 		g_iNumWallVertices += iNumVerts;
-		aVertices = new VECTOR2D[iNumVerts];
-		g_vWallTex[i] = new VECTOR2D[iNumVerts];
+		std::vector<VECTOR2D> aVertices(iNumVerts);
+		g_vWallTex[i].resize(iNumVerts);
 		//read vertices
-		for(int j=0; j<iNumVerts; j++)
-		{
+		for (int j = 0; j < iNumVerts; j++) {
 			f >> x >> y;
 			f >> g_vWallTex[i][j].x >> g_vWallTex[i][j].y;
 			aVertices[j].x = x;
 			aVertices[j].y = y;
-			g_vWallTex[i][j] = VECTOR2D(x/g_aMaterials[matID].fWidth,
-				y/g_aMaterials[matID].fHeight);
+			g_vWallTex[i][j] = VECTOR2D(x / g_aMaterials[matID].fWidth,
+			                            y / g_aMaterials[matID].fHeight);
 		}
-		aWalls[i] = RIGIDBODY(aVertices, iNumVerts, true);
+		aWalls[i] = RIGIDBODY(aVertices.data(), iNumVerts, true);
 		aWalls[i].fRestitution = 0.5f;
 		aWalls[i].fFriction	   = 0.1f;
 		aWalls[i].lMaterialID  = matID;
-		delete [] aVertices;
 	}
-	
+
 	//=============end walls data===========//
 	//////////////////////////////////////////
 	//============load map objects==========//
 	int iNumBodies;
 	f >> iNumBodies;
 	g_iNumBodies = iNumBodies;
-	aBodies = new RIGIDBODY[iNumBodies];
-	g_vBodyTex = new LPVECTOR2D[iNumBodies];
-	for(int i=0; i<iNumBodies; i++)
-	{
+	aBodies.assign(iNumBodies, RIGIDBODY{});
+	g_vBodyTex.assign(iNumBodies, std::vector<VECTOR2D>{});
+	for (int i = 0; i < iNumBodies; i++) {
 		f >> iNumVerts;
 		f >> matID;
 		g_iNumBodyVertices += iNumVerts;
-		aVertices = new VECTOR2D[iNumVerts];
-		g_vBodyTex[i] = new VECTOR2D[iNumVerts];
-		for(int j=0; j<iNumVerts; j++)
-		{
+		std::vector<VECTOR2D> aVertices(iNumVerts);
+		g_vBodyTex[i].resize(iNumVerts);
+		for (int j = 0; j < iNumVerts; j++) {
 			f >> x >> y;
 			f >> g_vBodyTex[i][j].x >> g_vBodyTex[i][j].y;
 			aVertices[j] = VECTOR2D(x, y);
 		}
-		aBodies[i] = RIGIDBODY(aVertices, iNumVerts);
+		aBodies[i] = RIGIDBODY(aVertices.data(), iNumVerts);
 		aBodies[i].fRestitution = 0.55f;
 		aBodies[i].fFriction	= 0.03f;
 		aBodies[i].lMaterialID	= matID;
-		delete [] aVertices;
 	}
-	//============end map object============//	
+	//============end map object============//
 
 	//===========load respawn points========//
 	f >> g_iNumRespawns;
-	aRespawns = (VECTOR2D*)malloc(sizeof(VECTOR2D)*g_iNumRespawns);
-
-
-	for(int i=0; i<g_iNumRespawns; i++)
-	{
+	aRespawns.resize(g_iNumRespawns);
+	for (int i = 0; i < g_iNumRespawns; i++) {
 		f >> aRespawns[i].x >> aRespawns[i].y;
 	}
-
 	//=============end respawn points=======//
 
 	//=============read packplaces==========//
 	f >> g_iNumPackPlaces;
-	aPackPlaces = (VECTOR2D*)malloc(sizeof(VECTOR2D)*g_iNumPackPlaces);
-	aPacks      = (PACK*)malloc(sizeof(PACK)*g_iNumPackPlaces);
-
-	for(int i=0; i<g_iNumPackPlaces; i++)
-	{
+	aPackPlaces.resize(g_iNumPackPlaces);
+	aPacks.assign(g_iNumPackPlaces, PACK{});
+	for (int i = 0; i < g_iNumPackPlaces; i++) {
 		f >> aPackPlaces[i].x >> aPackPlaces[i].y;
-
 		aPacks[i].type = (PACK_TYPE)(int)(RANDOM*static_cast<int>(PACK_TYPE::NUM_PACKS));
 		aPacks[i].bActive = true;
 	}
@@ -1736,17 +1713,14 @@ HRESULT LoadMap(const char* szFileName)
 
 	//==============read waypoints==========//
 	f >> g_iNumWayPoints;
-	aWayPoints = (NODE*)malloc(sizeof(NODE)*g_iNumWayPoints);
-
-	for(int i=0; i<g_iNumWayPoints; i++)
-	{
+	aWayPoints.assign(g_iNumWayPoints, NODE{});
+	for (int i = 0; i < g_iNumWayPoints; i++) {
 		f >> aWayPoints[i].vPos.x >> aWayPoints[i].vPos.y;
 		f >> aWayPoints[i].iNumEdges;
-		aWayPoints[i].aEdges = (int*)malloc(sizeof(int)*
-			aWayPoints[i].iNumEdges);
-
-		for(int j=0; j<aWayPoints[i].iNumEdges; j++)
+		aWayPoints[i].aEdges.resize(aWayPoints[i].iNumEdges);
+		for (int j = 0; j < aWayPoints[i].iNumEdges; j++) {
 			f >> aWayPoints[i].aEdges[j];
+		}
 	}
 	//===============end waypoints==========//
 	f.close();
@@ -1771,55 +1745,38 @@ HRESULT LoadMap(const char* szFileName)
 		aPacks[i].nVertexIndex = av;
 	}
 
-	//find the shortest way  for each vertex//
-	apPathParent = new int*[g_iNumWayPoints];
-	apPathDistance = new float*[g_iNumWayPoints];
+	//find the shortest way for each vertex//
+	apPathParent.assign(g_iNumWayPoints, std::vector<int>(g_iNumWayPoints, -1));
+	apPathDistance.assign(g_iNumWayPoints,
+	                     std::vector<float>(g_iNumWayPoints, 0x7fffffff));
 
-	bool *vis = new bool[g_iNumWayPoints];
+	std::vector<bool> vis(g_iNumWayPoints);
 
-	for(int s=0; s<g_iNumWayPoints; s++)
-	{
-		apPathParent[s] = new int[g_iNumWayPoints];
-		apPathDistance[s] = new float[g_iNumWayPoints];
-		
-		for(int i=0; i<g_iNumWayPoints; i++)
-		{
-			apPathParent[s][i] = -1;
-			apPathDistance[s][i] = 0x7fffffff;
-			
-			vis[i] = false;
-		}
-
+	for (int s = 0; s < g_iNumWayPoints; s++) {
+		std::fill(vis.begin(), vis.end(), false);
 		apPathDistance[s][s] = 0.0f;
 
-		int u, v, min;
-		float l;
-
-		for(int i=0; i<g_iNumWayPoints; i++)
-		{
-			min = 0x7fffffff; 
-			for(int j=0; j<g_iNumWayPoints; j++)
-				if(apPathDistance[s][j]<min && !vis[j])
-				{
+		int u = 0;
+		for (int i = 0; i < g_iNumWayPoints; i++) {
+			int min = 0x7fffffff;
+			for (int j = 0; j < g_iNumWayPoints; j++) {
+				if (apPathDistance[s][j] < min && !vis[j]) {
 					u = j;
 					min = apPathDistance[s][j];
 				}
+			}
 			vis[u] = true;
 
-			for(int j=0; j<aWayPoints[u].iNumEdges; j++)
-			{
-				v = aWayPoints[u].aEdges[j];
-				l = Length(aWayPoints[v].vPos-aWayPoints[u].vPos);
-				
-				if(apPathDistance[s][u]+l<apPathDistance[s][v])
-				{
-					apPathDistance[s][v] = apPathDistance[s][u]+l;
+			for (int j = 0; j < aWayPoints[u].iNumEdges; j++) {
+				const int v = aWayPoints[u].aEdges[j];
+				const float l = Length(aWayPoints[v].vPos - aWayPoints[u].vPos);
+				if (apPathDistance[s][u] + l < apPathDistance[s][v]) {
+					apPathDistance[s][v] = apPathDistance[s][u] + l;
 					apPathParent[s][v] = u;
 				}
 			}
 		}
 	}
-	delete [] vis;
 
 #ifdef DEBUG
 	{

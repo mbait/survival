@@ -2,6 +2,8 @@
 #if !defined(PHYSICS2D_H)
 #define PHYSICS2D_H
 
+#include <vector>
+
 #include "math2D.h"
 
 float const Epsilon = 1.0E-6f;
@@ -46,7 +48,11 @@ typedef struct RIGIDBODY
 
 	unsigned int lMaterialID;
 
-	LPVECTOR2D lpVertices;
+	// Vertex storage owns its memory. Existing call sites that do
+	// `body.lpVertices[i]` keep working since std::vector supports the
+	// same indexing syntax. iNumVertices is kept for compatibility but
+	// is always equal to lpVertices.size().
+	std::vector<VECTOR2D> lpVertices;
 	int iNumVertices;
 }*LPRIGIDBODY;	
 

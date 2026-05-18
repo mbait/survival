@@ -2,6 +2,8 @@
 #if !defined(POLYGON_H)
 #define POLYGON_H
 
+#include <vector>
+
 #include "math2D.h"
 
 float TriangleSquare(VECTOR2D A, VECTOR2D B, VECTOR2D C)
@@ -48,28 +50,22 @@ VECTOR2D ConvexPolygonMassCenter(LPVECTOR2D lpVertices, int iNumVertices)
 								  lpVertices[2]);
 	else
 	{
-		int cnt = iNumVertices-2;
-		VECTOR2D *mc = new VECTOR2D[cnt]; 
-		float *s = new float[cnt];
-		for(int i=2; i<cnt+1; i++)
-		{
+		int cnt = iNumVertices - 2;
+		std::vector<VECTOR2D> mc(cnt);
+		std::vector<float>    s(cnt);
+		for (int i = 2; i < cnt + 1; i++) {
 			mc[i-2] = TriangleMassCenter(lpVertices[0], lpVertices[i-1], lpVertices[i]);
-			s[i-2] = TriangleSquare(lpVertices[0], lpVertices[i-1], lpVertices[i]);
+			s[i-2]  = TriangleSquare(lpVertices[0], lpVertices[i-1], lpVertices[i]);
 		}
 		mc[cnt-1] = TriangleMassCenter(lpVertices[0], lpVertices[cnt], lpVertices[cnt+1]);
-		s[cnt-1] = TriangleSquare(lpVertices[0], lpVertices[cnt], lpVertices[cnt+1]);
+		s[cnt-1]  = TriangleSquare(lpVertices[0], lpVertices[cnt], lpVertices[cnt+1]);
 
 		float xc = 0, yc = 0;
 		float S = ConvexPolygonSquare(lpVertices, iNumVertices);
-		for(int i=0; i<cnt; i++)
-		{
-			xc += mc[i].x*s[i]/S;
-			yc += mc[i].y*s[i]/S;
+		for (int i = 0; i < cnt; i++) {
+			xc += mc[i].x * s[i] / S;
+			yc += mc[i].y * s[i] / S;
 		}
-
-		delete [] mc;
-		delete [] s;
-		
 		return VECTOR2D(xc, yc);
 	}
 }

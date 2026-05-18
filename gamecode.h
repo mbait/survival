@@ -222,7 +222,7 @@ struct NODE
 {
 	VECTOR2D vPos;
 
-	int *aEdges;
+	std::vector<int> aEdges;
 	int iNumEdges;
 };
 

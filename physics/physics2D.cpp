@@ -26,78 +26,37 @@ RIGIDBODY::RIGIDBODY()
 	fTorque = 0.0f;
 	fRestitution = 1.0f;
 	fFriction	 = 0.0f;
-	lpVertices = nullptr;
 	iNumVertices = 0;
 	lMaterialID = 0;
+	// lpVertices is a std::vector — its default ctor already produces empty.
 }
 
 RIGIDBODY::RIGIDBODY(LPVECTOR2D _lpVertices, int _iNumVertices, bool fStatic)
+	: RIGIDBODY()
 {
-	*this = RIGIDBODY();
-	
-	//copy vertex data
-	/*float minx = _HUGE, miny = _HUGE;
-	float maxx = -_HUGE, maxy = -_HUGE;
-	*/
 	iNumVertices = _iNumVertices;
-	lpVertices = new VECTOR2D[_iNumVertices];
-	for(int i=0; i<iNumVertices; i++)
-	{
-		lpVertices[i] = _lpVertices[i];
+	lpVertices.assign(_lpVertices, _lpVertices + _iNumVertices);
 
-		/*if(minx>lpVertices[i].x)
-			minx = lpVertices[i].x;
-		if(miny>lpVertices[i].y)
-			miny = lpVertices[i].y;
-		if(maxx<lpVertices[i].x)
-			maxx = lpVertices[i].x;
-		if(maxy<lpVertices[i].y)
-			maxy = lpVertices[i].y;
-		*/
-	}
-	/*vSize.x = maxx-minx;
-	vSize.y = maxy-miny;
-	if(!vSize.x)
-		vSize.x = 1;
-	if(!vSize.y)
-		vSize.y = 1;
-	*/
-	
 	//calculate mass center
 	Pos = ConvexPolygonMassCenter(_lpVertices, _iNumVertices);
 
-	//vOffset.x = minx-Pos.x;
-	//vOffset.y = miny-Pos.y;
-
 	float maxr = 0;
-	VECTOR2D R;
-	float rlen;
-	for(int i=0; i<iNumVertices; i++)
-	{
-		R = _lpVertices[i]-Pos;
-		rlen = Length(R);
-		if(rlen>maxr)
+	for (int i = 0; i < iNumVertices; i++) {
+		const float rlen = Length(_lpVertices[i] - Pos);
+		if (rlen > maxr) {
 			maxr = rlen;
+		}
 	}
-	
+
 	//calculate mass and inertia
-	if(!fStatic)
-	{
-		fMass = maxr*maxr;
-		fInertia = 0.5f*fMass*fMass;
-	}
-	else
-	{
+	if (!fStatic) {
+		fMass = maxr * maxr;
+		fInertia = 0.5f * fMass * fMass;
+	} else {
 		fMass = 0.0f;
 		fInertia = 0.0f;
 	}
 }
-
-/*RIGIDBODY::~RIGIDBODY()
-{
-	if(lpVertices)
-		delete [] lpVertices;
-}*/
 
 void RIGIDBODY::ApplyForce(VECTOR2D const &F)
 {
@@ -386,13 +345,9 @@ bool CircleIntersect(RIGIDBODY &body, VECTOR2D center,
 {
 	VECTOR2D Axis = Normalize(center-body.Pos);
 	
-	VECTOR2D aVertices[2];
-	aVertices[0] = center-Axis*fRadius;
-	aVertices[1] = center+Axis*fRadius;
-
 	RIGIDBODY circle;
 	circle.Pos = center;
-	circle.lpVertices = aVertices;
+	circle.lpVertices = { center - Axis * fRadius, center + Axis * fRadius };
 	circle.iNumVertices = 2;
 
 	VECTOR2D N;
@@ -466,7 +421,7 @@ int FindContactPoints(LPVECTOR2D lpVertices, RIGIDBODY const &body, VECTOR2D N, 
 	float min = DotProduct(body.lpVertices[0]-body.Pos, N);
 	lpVertices[0] = body.lpVertices[0];
 
-	float *d = new float[body.iNumVertices];
+	std::vector<float> d(body.iNumVertices);
 	d[0] = min;
 	
 	int mini = 0;
