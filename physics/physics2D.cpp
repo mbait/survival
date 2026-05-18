@@ -11,27 +11,23 @@ void swap(float &a, float &b)
 }
 
 //////////////////////////////////IMPLEMENTATION/////////////////////////////////////////
+// Members of type VECTOR2D (Pos, Velocity, Force) are zero-initialised
+// implicitly by VECTOR2D's own default ctor before this body runs — the
+// original code had local variables of the same names that did nothing
+// (no_op assignments that shadowed the members) plus a stray MATRIX
+// mOrientation that never matched any member at all. All removed; the
+// observable state of a default-constructed RIGIDBODY is unchanged.
 RIGIDBODY::RIGIDBODY()
 {
 	fMass = 0.0f;
 	fInertia = 0.0f;
-
-	[[maybe_unused]] VECTOR2D Pos = VECTOR2D(0.0f, 0.0f);
 	fOrientation = 0.0f;
-	[[maybe_unused]] MATRIX mOrientation = MATRIX(0.0f);
-
-	[[maybe_unused]] VECTOR2D Velocity = VECTOR2D(0.0f, 0.0f);
 	fAngVelocity = 0.0f;
-
-	[[maybe_unused]] VECTOR2D Force = VECTOR2D(0.0f, 0.0f);
 	fTorque = 0.0f;
-
-	lpVertices = 0;
-	iNumVertices = 0;
-
 	fRestitution = 1.0f;
 	fFriction	 = 0.0f;
-
+	lpVertices = nullptr;
+	iNumVertices = 0;
 	lMaterialID = 0;
 }
 
@@ -743,11 +739,15 @@ JOINT::JOINT()
 	aPoints[1] = VECTOR2D();
 }
 
-JOINT::JOINT(LPRIGIDBODY body0, LPRIGIDBODY body1, 
-			 VECTOR2D point0, VECTOR2D point1) 
+// Delegating ctor — the original C++98 code used `JOINT();` as a statement
+// here, which creates and immediately discards a temporary instead of
+// initialising *this. The four assignments below were doing the real work
+// anyway; the temporary was just noise. C++11+ delegating syntax makes
+// the intent explicit.
+JOINT::JOINT(LPRIGIDBODY body0, LPRIGIDBODY body1,
+			 VECTOR2D point0, VECTOR2D point1)
+	: JOINT()
 {
-	JOINT();
-
 	aBodies[0] = body0;
 	aBodies[1] = body1;
 	aPoints[0] = point0;
