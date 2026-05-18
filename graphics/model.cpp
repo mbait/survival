@@ -1,7 +1,8 @@
 #include "model.h"
 
-#include <cstdio>
 #include <cstring>
+#include <fstream>
+#include <vector>
 
 #include "compat/affine2d.h"
 #include "compat/win32_compat.h"
@@ -38,25 +39,28 @@ HRESULT MODEL::LoadFromFile(SDL_Renderer* renderer, const char* szFileName)
 		frames = nullptr;
 	}
 
-	FILE* f = std::fopen(szFileName, "rb");
+	std::ifstream f(szFileName, std::ios::binary);
 	if (!f) {
 		return E_FAIL;
 	}
 
+	// Convenience: bail out if any read fell short.
+	auto read_bytes = [&](void* dst, std::streamsize n) -> bool {
+		f.read(static_cast<char*>(dst), n);
+		return f.good() && f.gcount() == n;
+	};
+
 	// Load textures — each part has its texture bytes inline in the .m2d.
 	for (int i = 0; i < NUM_PARTS; i++) {
 		int blocksize = 0;
-		std::fread(&blocksize, sizeof(int), 1, f);
-		if (blocksize == -1) {
-			std::fclose(f);
+		if (!read_bytes(&blocksize, sizeof(int)) || blocksize == -1) {
 			return E_FAIL;
 		}
-		void* rawbuf = new BYTE[blocksize];
-		std::fread(rawbuf, blocksize, 1, f);
-		HRESULT hr = aParts[i].Init(renderer, rawbuf, blocksize);
-		delete[] static_cast<BYTE*>(rawbuf);
-		if (FAILED(hr)) {
-			std::fclose(f);
+		std::vector<BYTE> rawbuf(blocksize);
+		if (!read_bytes(rawbuf.data(), blocksize)) {
+			return E_FAIL;
+		}
+		if (FAILED(aParts[i].Init(renderer, rawbuf.data(), blocksize))) {
 			return E_FAIL;
 		}
 	}
@@ -64,24 +68,29 @@ HRESULT MODEL::LoadFromFile(SDL_Renderer* renderer, const char* szFileName)
 	// Per-part offset + rotation pivot.
 	for (int i = 0; i < NUM_PARTS; i++) {
 		float vals[4];
-		std::fread(vals, sizeof(vals), 1, f);
+		if (!read_bytes(vals, sizeof(vals))) {
+			return E_FAIL;
+		}
 		aParts[i].SetXYPos(vals[0], vals[1]);
 		aParts[i].SetRotationXY(vals[2], vals[3]);
 	}
 
 	// Animation key-frames.
 	int framecount = 0;
-	std::fread(&framecount, sizeof(framecount), 1, f);
+	if (!read_bytes(&framecount, sizeof(framecount))) {
+		return E_FAIL;
+	}
 	if (framecount > MAX_FRAMES) {
 		framecount = MAX_FRAMES;
 	}
 	if (framecount > 0) {
 		frames = new KEYFRAME[framecount];
-		std::fread(frames, sizeof(KEYFRAME), framecount, f);
+		if (!read_bytes(frames, static_cast<std::streamsize>(sizeof(KEYFRAME)) * framecount)) {
+			return E_FAIL;
+		}
 		iNumFrames = framecount;
 	}
 
-	std::fclose(f);
 	return S_OK;
 }
 

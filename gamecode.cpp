@@ -4,6 +4,8 @@
 #include <SDL.h>
 #include <SDL_image.h>
 
+#include <fstream>
+
 #include <vector>
 
 #include "platform/font_cache.h"
@@ -205,20 +207,20 @@ HRESULT PLAYER::Init(SDL_Renderer* pRenderer,
 	if(FAILED(hr))
 		return hr;
 
-	FILE *f = fopen(szBodyFileName, "r");
+	std::ifstream f(szBodyFileName);
 	if(!f)
 		return E_FAIL;
 
 	int iNumVertices = 0;
-	fscanf(f, "%i", &iNumVertices);
+	f >> iNumVertices;
 	VECTOR2D *aVertices = new VECTOR2D[iNumVertices];
 	float x, y;
 	for(int i=0; i<iNumVertices; i++)
 	{
-		fscanf(f, "%f%f", &x, &y);
+		f >> x >> y;
 		aVertices[i] = VECTOR2D(x, y);
 	}
-	fclose(f);
+	f.close();
 	body = RIGIDBODY(aVertices, iNumVertices);
 	delete [] aVertices;
 
@@ -227,14 +229,14 @@ HRESULT PLAYER::Init(SDL_Renderer* pRenderer,
 	float maxx = -_HUGE, maxy = -_HUGE;
 	for(int i=0; i<NUM_PARTS; i++)
 	{
-		f = fopen(szMeshFile[i], "r");
+		f.open(szMeshFile[i]);
 		if(!f)
 			return E_FAIL;
 
-		fscanf(f, "%d", &iNumVertices);
+		f >> iNumVertices;
 		for(int j=0; j<iNumVertices; j++)
 		{
-			fscanf(f, "%f%f", &x, &y);
+			f >> x >> y;
 			x *= 0.6f;
 			y *= 0.6f;
 
@@ -248,7 +250,7 @@ HRESULT PLAYER::Init(SDL_Renderer* pRenderer,
 			else if(y<miny)
 				miny = y;
 		}
-		fclose(f);
+		f.close();
 		
 		iNumVertices = 4;
 		aVertices = new VECTOR2D[iNumVertices];
@@ -1422,20 +1424,20 @@ HRESULT AddPlayer()
 	m_aPlayers[index].tmAltShoot.LastTickCount += 2200;
 
 	VECTOR2D *aVertices = new VECTOR2D[6];
-	FILE *f = fopen("data/meshes/grenade.dat", "r");
+	std::ifstream f("data/meshes/grenade.dat");
 	if(!f)
 		return E_FAIL;
 
 	int iNumVerts;
 	float x, y;
 
-	fscanf(f, "%i", &iNumVerts);
+	f >> iNumVerts;
 	for(int i=0; i<iNumVerts; i++)
 	{
-		fscanf(f, "%f%f", &x, &y);
+		f >> x >> y;
 		aVertices[i] = VECTOR2D(x, y);
 	}
-	fclose(f);
+	f.close();
 
 	m_aPlayers[index].grenade_body = RIGIDBODY(aVertices,
 		iNumVerts);
@@ -1618,28 +1620,28 @@ HRESULT LoadGameData()
 HRESULT LoadMap(const char* szFileName)
 {
 	//===============load materials==============//
-	FILE *f = fopen("data/config/mat.cfg", "r");
+	std::ifstream f("data/config/mat.cfg");
 	if(!f)
 		return E_FAIL;
 
 	for (int i = 0; i < static_cast<int>(MATERIAL_TYPE::NUM_MATERIALS); i++) {
-		fscanf(f, "%f%f", &g_aMaterials[i].fWidth, &g_aMaterials[i].fHeight);
+		f >> g_aMaterials[i].fWidth >> g_aMaterials[i].fHeight;
 		if (g_szMaterialFile[i] == nullptr) {
 			g_aMaterials[i].pTexture = nullptr;
 			continue;
 		}
 		g_aMaterials[i].pTexture = IMG_LoadTexture(g_renderer, g_szMaterialFile[i]);
 		if (!g_aMaterials[i].pTexture) {
-			fclose(f);
+			f.close();
 			return E_FAIL;
 		}
 	}
 
-	fclose(f);
+	f.close();
 	//================end materials==============//
 
 	//===========read walls data============//
-	f = fopen(szFileName, "r");
+	f.open(szFileName);
 	if(!f)
 		return E_FAIL;
 
@@ -1647,7 +1649,7 @@ HRESULT LoadMap(const char* szFileName)
 	int iNumVerts;
 
 	int iNumWalls;
-	fscanf(f, "%i", &iNumWalls);
+	f >> iNumWalls;
 	g_iNumWalls = iNumWalls;
 	aWalls = new RIGIDBODY[iNumWalls];
 	g_vWallTex = new LPVECTOR2D[iNumWalls];
@@ -1655,17 +1657,16 @@ HRESULT LoadMap(const char* szFileName)
 	int matID;
 	for(int i=0; i<iNumWalls; i++)
 	{
-		fscanf(f, "%d", &iNumVerts);
-		fscanf(f, "%d", &matID);
+		f >> iNumVerts;
+		f >> matID;
 		g_iNumWallVertices += iNumVerts;
 		aVertices = new VECTOR2D[iNumVerts];
 		g_vWallTex[i] = new VECTOR2D[iNumVerts];
 		//read vertices
 		for(int j=0; j<iNumVerts; j++)
 		{
-			fscanf(f, "%f%f", &x, &y);
-			fscanf(f, "%f%f", &g_vWallTex[i][j].x, 
-				&g_vWallTex[i][j].y);
+			f >> x >> y;
+			f >> g_vWallTex[i][j].x >> g_vWallTex[i][j].y;
 			aVertices[j].x = x;
 			aVertices[j].y = y;
 			g_vWallTex[i][j] = VECTOR2D(x/g_aMaterials[matID].fWidth,
@@ -1682,22 +1683,21 @@ HRESULT LoadMap(const char* szFileName)
 	//////////////////////////////////////////
 	//============load map objects==========//
 	int iNumBodies;
-	fscanf(f, "%i", &iNumBodies);
+	f >> iNumBodies;
 	g_iNumBodies = iNumBodies;
 	aBodies = new RIGIDBODY[iNumBodies];
 	g_vBodyTex = new LPVECTOR2D[iNumBodies];
 	for(int i=0; i<iNumBodies; i++)
 	{
-		fscanf(f, "%d", &iNumVerts);
-		fscanf(f, "%d", &matID);
+		f >> iNumVerts;
+		f >> matID;
 		g_iNumBodyVertices += iNumVerts;
 		aVertices = new VECTOR2D[iNumVerts];
 		g_vBodyTex[i] = new VECTOR2D[iNumVerts];
 		for(int j=0; j<iNumVerts; j++)
 		{
-			fscanf(f, "%f%f", &x, &y);
-			fscanf(f, "%f%f", &g_vBodyTex[i][j].x,
-				&g_vBodyTex[i][j].y);
+			f >> x >> y;
+			f >> g_vBodyTex[i][j].x >> g_vBodyTex[i][j].y;
 			aVertices[j] = VECTOR2D(x, y);
 		}
 		aBodies[i] = RIGIDBODY(aVertices, iNumVerts);
@@ -1709,27 +1709,25 @@ HRESULT LoadMap(const char* szFileName)
 	//============end map object============//	
 
 	//===========load respawn points========//
-	fscanf(f, "%d", &g_iNumRespawns);
+	f >> g_iNumRespawns;
 	aRespawns = (VECTOR2D*)malloc(sizeof(VECTOR2D)*g_iNumRespawns);
 
 
 	for(int i=0; i<g_iNumRespawns; i++)
 	{
-		fscanf(f, "%f%f", &aRespawns[i].x, 
-			&aRespawns[i].y);
+		f >> aRespawns[i].x >> aRespawns[i].y;
 	}
 
 	//=============end respawn points=======//
 
 	//=============read packplaces==========//
-	fscanf(f, "%d", &g_iNumPackPlaces);
+	f >> g_iNumPackPlaces;
 	aPackPlaces = (VECTOR2D*)malloc(sizeof(VECTOR2D)*g_iNumPackPlaces);
 	aPacks      = (PACK*)malloc(sizeof(PACK)*g_iNumPackPlaces);
 
 	for(int i=0; i<g_iNumPackPlaces; i++)
 	{
-		fscanf(f, "%f%f", &aPackPlaces[i].x, 
-			&aPackPlaces[i].y);
+		f >> aPackPlaces[i].x >> aPackPlaces[i].y;
 
 		aPacks[i].type = (PACK_TYPE)(int)(RANDOM*static_cast<int>(PACK_TYPE::NUM_PACKS));
 		aPacks[i].bActive = true;
@@ -1737,22 +1735,21 @@ HRESULT LoadMap(const char* szFileName)
 	//===============end packplaces=========//
 
 	//==============read waypoints==========//
-	fscanf(f, "%d", &g_iNumWayPoints);
+	f >> g_iNumWayPoints;
 	aWayPoints = (NODE*)malloc(sizeof(NODE)*g_iNumWayPoints);
 
 	for(int i=0; i<g_iNumWayPoints; i++)
 	{
-		fscanf(f, "%f%f",
-			&aWayPoints[i].vPos.x, &aWayPoints[i].vPos.y);
-		fscanf(f, "%d", &aWayPoints[i].iNumEdges);
+		f >> aWayPoints[i].vPos.x >> aWayPoints[i].vPos.y;
+		f >> aWayPoints[i].iNumEdges;
 		aWayPoints[i].aEdges = (int*)malloc(sizeof(int)*
 			aWayPoints[i].iNumEdges);
 
 		for(int j=0; j<aWayPoints[i].iNumEdges; j++)
-			fscanf(f, "%d", &aWayPoints[i].aEdges[j]);
+			f >> aWayPoints[i].aEdges[j];
 	}
 	//===============end waypoints==========//
-	fclose(f);
+	f.close();
 
 	//assign packplace to waypoint
 	for(int i=0; i<g_iNumPackPlaces; i++)
@@ -1825,19 +1822,16 @@ HRESULT LoadMap(const char* szFileName)
 	delete [] vis;
 
 #ifdef DEBUG
-	f = fopen("debug.txt", "w");
-
-	for(int i=0; i<g_iNumWayPoints; i++)
 	{
-		fprintf(f, "%d\n", i);
-		for(int j=0; j<g_iNumWayPoints; j++)
-		{
-			fprintf(f, "%d ", apPathParent[i][j]);
+		std::ofstream dbg("debug.txt");
+		for (int i = 0; i < g_iNumWayPoints; i++) {
+			dbg << i << '\n';
+			for (int j = 0; j < g_iNumWayPoints; j++) {
+				dbg << apPathParent[i][j] << ' ';
+			}
+			dbg << "\n\n";
 		}
-		fprintf(f, "\n\n");
 	}
-
-	fclose(f);
 #endif
 
 	return S_OK;
