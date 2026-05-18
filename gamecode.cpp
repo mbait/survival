@@ -893,17 +893,15 @@ void PLAYER::Update(DWORD dwTime, bool *actions)
 
 		//add particles
 		if(mint>0.0f) {
-			if(bStaticObject)
+			if(bStaticObject) {
 				AddCustomParticles(view_pt, minNt, COLOR(128, 128, 128, 128));
-		}
-			else
-			{
+			} else {
 				if(bViewSoldier)
 					AddCustomParticles(view_pt, minNt, COLOR(255, 255, 155, 0));
 				else
 					AddCustomParticles(view_pt, minNt, COLOR(255, 190, 150, 10));
-
 			}
+		}
 				
 		tmShoot.Reset();
 
