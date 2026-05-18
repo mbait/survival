@@ -21,12 +21,12 @@
 
 // Definitions for the globals declared in main.h. Both the SDL entry
 // point and (eventually) gamecode.cpp will reference these.
-int  g_iScreenWidth  = 0;
-int  g_iScreenHeight = 0;
-int  g_iRefreshRate  = 0;
-int  g_iAALevel      = 0;
-bool g_bFullScreen   = false;
-char g_szMapName[1024] = {0};
+int         g_iScreenWidth  = 0;
+int         g_iScreenHeight = 0;
+int         g_iRefreshRate  = 0;
+int         g_iAALevel      = 0;
+bool        g_bFullScreen   = false;
+std::string g_szMapName;
 
 namespace {
 
@@ -59,9 +59,7 @@ void load_settings(const std::filesystem::path& ini)
     using platform::ini_get_int;
     using platform::ini_get_string;
 
-    const std::string map = ini_get_string(ini, "Game settings", "Map", "default.map");
-    std::strncpy(g_szMapName, map.c_str(), sizeof(g_szMapName) - 1);
-    g_szMapName[sizeof(g_szMapName) - 1] = '\0';
+    g_szMapName = ini_get_string(ini, "Game settings", "Map", "default.map");
 
     g_iScreenWidth  = ini_get_int(ini, "Display settings", "Screen_width",       800);
     g_iScreenHeight = ini_get_int(ini, "Display settings", "Screen_height",      600);
@@ -81,7 +79,7 @@ int main(int /*argc*/, char* argv[])
                  "settings: %dx%d %s, refresh=%d, AA=%d, map=%s (from %s)\n",
                  g_iScreenWidth, g_iScreenHeight,
                  g_bFullScreen ? "fullscreen" : "windowed",
-                 g_iRefreshRate, g_iAALevel, g_szMapName, ini.c_str());
+                 g_iRefreshRate, g_iAALevel, g_szMapName.c_str(), ini.c_str());
 
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER) != 0) {
         die("SDL_Init");
