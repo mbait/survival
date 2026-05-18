@@ -155,8 +155,8 @@ struct TIMER
 
 struct MATERIAL
 {
-	LPDIRECT3DTEXTURE9 pTexture;
-	
+	SDL_Texture* pTexture;
+
 	float fWidth;
 	float fHeight;
 };
@@ -173,9 +173,9 @@ struct PLAYER
 {
 	unsigned int ID;
 	
-	static const c_NumHealth	= 100;
-	static const c_NumRifleAmmo = 200;
-	static const c_NumGrenades	= 10;
+	static constexpr int c_NumHealth    = 100;
+	static constexpr int c_NumRifleAmmo = 200;
+	static constexpr int c_NumGrenades  = 10;
 	
 	bool bAlive;
 	bool bShooting;
@@ -231,7 +231,7 @@ struct NODE
 	int iNumEdges;
 };
 
-inline DWORD FtoDW( FLOAT f ) { return *((DWORD*)&f); }
+inline DWORD FtoDW(float f) { return *((DWORD*)&f); }
 
 // Forward declarations of the game's lifecycle entry points. After the
 // SDL port (Phase 1g/1h/1k) the renderer/window come from the platform

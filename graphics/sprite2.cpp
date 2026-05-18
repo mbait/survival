@@ -85,12 +85,25 @@ HRESULT SPRITE::Init(SDL_Renderer* renderer, const void* memptr, int nFileSize)
     if (!renderer || !memptr || nFileSize <= 0) {
         return E_FAIL;
     }
+    // Try auto-detection first (handles JPG/PNG/BMP/GIF/etc. via the leading
+    // magic bytes), then explicitly fall back to TGA — SDL_image cannot
+    // sniff TGA v1 from memory because the v1 spec defines no header magic,
+    // and that is exactly what the embedded blocks in soldat.m2d are.
     SDL_RWops* rw = SDL_RWFromConstMem(memptr, nFileSize);
     if (!rw) {
         return E_FAIL;
     }
-    // freesrc=1 → SDL closes the RWops for us.
-    SDL_Texture* tex = IMG_LoadTexture_RW(renderer, rw, 1);
+    const Sint64 start = SDL_RWtell(rw);
+    SDL_Texture* tex = IMG_LoadTexture_RW(renderer, rw, 0);
+    if (!tex) {
+        SDL_RWseek(rw, start, RW_SEEK_SET);
+        SDL_Surface* surf = IMG_LoadTyped_RW(rw, 0, "TGA");
+        if (surf) {
+            tex = SDL_CreateTextureFromSurface(renderer, surf);
+            SDL_FreeSurface(surf);
+        }
+    }
+    SDL_RWclose(rw);
     return finish_init(renderer, tex, pTexture, pRenderer,
                        iWidth, iHeight, fRotationX, fRotationY);
 }

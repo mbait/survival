@@ -15,6 +15,7 @@
 #include <cstring>
 #include <filesystem>
 
+#include "gamecode.h"
 #include "main.h"
 #include "read_ini.h"
 
@@ -111,6 +112,44 @@ int main(int /*argc*/, char* argv[])
         return 1;
     }
 
+    // Initialise the game's render layer and load assets. ShowSplash blits
+    // the splash texture once and presents; we hold it on screen briefly so
+    // the user can actually see it before LoadGameData takes over.
+    if (FAILED(InitGfx(window, renderer))) {
+        die("InitGfx");
+        SDL_DestroyRenderer(renderer);
+        SDL_DestroyWindow(window);
+        SDL_Quit();
+        return 1;
+    }
+    ShowSplash();
+    SDL_Delay(800);
+
+    {
+        const std::filesystem::path map_path =
+            std::filesystem::path("data/maps") / g_szMapName;
+        if (FAILED(LoadMap(map_path.c_str()))) {
+            std::fprintf(stderr, "LoadMap failed: %s\n", map_path.c_str());
+            Cleanup();
+            SDL_DestroyRenderer(renderer);
+            SDL_DestroyWindow(window);
+            SDL_Quit();
+            return 1;
+        }
+    }
+    if (FAILED(LoadGameData())) {
+        std::fprintf(stderr, "LoadGameData failed\n");
+        Cleanup();
+        SDL_DestroyRenderer(renderer);
+        SDL_DestroyWindow(window);
+        SDL_Quit();
+        return 1;
+    }
+
+    // Capture the mouse for relative-motion aim, matching the legacy
+    // SetCursorPos-every-frame hack.
+    SDL_SetRelativeMouseMode(SDL_TRUE);
+
     bool running = true;
     while (running) {
         SDL_Event ev;
@@ -129,11 +168,15 @@ int main(int /*argc*/, char* argv[])
             }
         }
 
-        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-        SDL_RenderClear(renderer);
-        SDL_RenderPresent(renderer);
+        // Phase 1k.1: skip UpdateScene (would crash without per-frame
+        // physics state for the world we haven't fully ported yet) and
+        // call only UpdateFrame, whose stub just clears + presents.
+        if (FAILED(UpdateFrame())) {
+            running = false;
+        }
     }
 
+    Cleanup();
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     SDL_Quit();

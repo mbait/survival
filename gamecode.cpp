@@ -2,6 +2,7 @@
 
 #include "gamecode.h"
 #include <SDL.h>
+#include <SDL_image.h>
 
 //#define DEBUG
 //#define GODMODE
@@ -33,17 +34,14 @@ ANIMATION animations[NUMANIMATIONS] = {
 	{12, 12,  1.0f,    1,  ANIMATION_SINGLE}  //ANIMATION_FALL
 };
 
-//DX interfaces
-LPDIRECT3D9 g_pD3D;
-LPDIRECT3DDEVICE9 g_pDevice;
-LPDIRECT3DVERTEXBUFFER9 g_pTerrainVB;
-LPDIRECT3DVERTEXBUFFER9 g_pParticleVB;
-LPDIRECT3DTEXTURE9 g_pFireTexture;
-LPDIRECT3DTEXTURE9 g_pSmokeTexture;
+// SDL render context — borrowed from the platform layer; we don't own these.
+static SDL_Window*   g_window   = nullptr;
+static SDL_Renderer* g_renderer = nullptr;
 
-LPD3DXLINE g_pLine;
-LPD3DXFONT g_pSysFont;
-LPD3DXFONT g_pUIFont;
+// Owned textures: loaded in LoadGameData, freed in Cleanup. Fonts and
+// per-frame geometry batches come back in Phase 1k.2.
+SDL_Texture* g_pFireTexture  = nullptr;
+SDL_Texture* g_pSmokeTexture = nullptr;
 
 // Input migrated to SDL — keyboard state is read directly from
 // SDL_GetKeyboardState in UpdateScene, mouse state from
@@ -85,7 +83,7 @@ SPRITE  pack_grenade;
 SPRITE  pack_health;
 
 //cursor coordinates
-POINT g_cursor; 
+SDL_Point g_cursor;
 VECTOR2D g_vCenter;
 
 //particle objects
@@ -111,7 +109,6 @@ bool g_bCollided = false;
 DWORD g_last_coltime = 0;
 
 //device settings
-HWND g_hwndParent;
 
 TIMER tmFPS;
 int nFrameCount = 0;
@@ -194,7 +191,7 @@ HRESULT PLAYER::Init(SDL_Renderer* pRenderer,
 	
 	HRESULT hr;
 
-	hr = model.LoadFromFile(pDevice, szModelFileName);
+	hr = model.LoadFromFile(pRenderer, szModelFileName);
 	if(FAILED(hr))
 		return hr;
 
@@ -1175,554 +1172,15 @@ HRESULT UpdateScene(DWORD dwTime)
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 HRESULT UpdateFrame()
 {
-	HRESULT hr;
-	hr = g_pDevice->Clear(0, 0, D3DCLEAR_TARGET, D3DCOLOR_XRGB(0, 0, 0), 1.0f, 0L);
-	if(FAILED(hr))
-		return hr;
-	
-
-	if(FAILED(hr = g_pDevice->BeginScene()))
-		return hr;
-	
-	//======draw game elements======//
-	
-	//main player
-	
-	VECTOR2D player_pos;
-	VECTOR2D vOffset;
-	
-	if(m_aPlayers[0].bAlive)
-	{
-		vOffset = m_aPlayers[0].body.Pos-g_vCenter;
-	
-		player_pos = g_vCenter+VECTOR2D(0.0f, 5.0f);
-		m_aPlayers[0].model.SetXYPos(player_pos.x, player_pos.y);
-		if(m_aPlayers[0].bShooting)
-			m_aPlayers[0].model.Draw(&rifle, &fire);
-		else
-			m_aPlayers[0].model.Draw(&rifle);
+	// Phase 1k.1 stub: clear to black + present. Full port (terrain, bodies,
+	// players, packs, particles, UI text, lines) lands in Phase 1k.2.
+	if (!g_renderer) {
+		return E_FAIL;
 	}
-	else
-	{
-		vOffset = m_aPlayers[0].ragdoll[HEAD].Pos-g_vCenter;
-		//vOffset = m_aPlayers[0].body.Pos-g_vCenter;
-
-		for(int i=0; i<NUM_PARTS; i++)
-		{
-			VECTOR2D Pos = m_aPlayers[0].ragdoll[i].Pos-vOffset;
-			float fRotation = m_aPlayers[0].ragdoll[i].fOrientation;
-			
-			/*int iNumVertices = m_aPlayers[0].ragdoll[i].iNumVertices;
-			D3DXVECTOR2 *aVertices = new D3DXVECTOR2[iNumVertices];
-			for(int j=0; j<iNumVertices; j++)
-			{
-				aVertices[j].x = m_aPlayers[0].ragdoll[i].lpVertices[j].x-
-					vOffset.x;
-				aVertices[j].y = m_aPlayers[0].ragdoll[i].lpVertices[j].y-
-					vOffset.y;
-			}
-			aVertices[iNumVertices].x = m_aPlayers[0].ragdoll[i].lpVertices[0].x-
-					vOffset.x;
-			aVertices[iNumVertices].y = m_aPlayers[0].ragdoll[i].lpVertices[0].y-
-					vOffset.y;
-			g_pLine->Draw(aVertices, iNumVertices+1, D3DCOLOR_XRGB(255, 255, 255));
-			*/
-
-			float fRx = m_aPlayers[0].model.GetPart(i)->GetRotationX();
-			float fRy = m_aPlayers[0].model.GetPart(i)->GetRotationY();
-			m_aPlayers[0].model.GetPart(i)->Draw(Pos.x, Pos.y, -fRotation, 
-				12, 12, 0.4f);
-		}
-	}
-
-	if(m_aPlayers[0].bActiveGrenade)
-		grenade.Draw(m_aPlayers[0].grenade_body.Pos.x-vOffset.x, m_aPlayers[0].grenade_body.Pos.y-
-		vOffset.y, -m_aPlayers[0].grenade_body.fOrientation, grenade.GetRotationX(), 
-		grenade.GetRotationY());
-
-	for(int i=1; i<g_iNumPlayers; i++)
-	{
-		if(m_aPlayers[i].bAlive)
-		{
-			player_pos = m_aPlayers[i].body.Pos+
-				VECTOR2D(0.0f, 5.0f)-vOffset;
-			m_aPlayers[i].model.SetXYPos(player_pos.x, player_pos.y);
-			if(m_aPlayers[i].bShooting)
-				m_aPlayers[i].model.Draw(&rifle, &fire);
-			else
-				m_aPlayers[i].model.Draw(&rifle);
-		}
-		else
-		{
-			for(int j=0; j<NUM_PARTS; j++)
-			{
-				VECTOR2D Pos = m_aPlayers[i].ragdoll[j].Pos-vOffset;
-				float fRotation = m_aPlayers[i].ragdoll[j].fOrientation;
-				float fRx = m_aPlayers[i].model.GetPart(j)->GetRotationX();
-				float fRy = m_aPlayers[i].model.GetPart(j)->GetRotationY();
-
-				m_aPlayers[i].model.GetPart(j)->Draw(Pos.x, Pos.y, 
-					 -fRotation, 12, 12, 0.4f);
-			}
-		}
-		if(m_aPlayers[i].bActiveGrenade)
-			grenade.Draw(m_aPlayers[i].grenade_body.Pos.x-vOffset.x, m_aPlayers[i].grenade_body.Pos.y-
-			vOffset.y, -m_aPlayers[i].grenade_body.fOrientation, grenade.GetRotationX(), 
-			grenade.GetRotationY());
-	}
-
-	//draw packs
-	for(int i=0; i<g_iNumPackPlaces; i++)
-		if(aPacks[i].bActive)
-		{
-			VECTOR2D pos;
-			VECTOR2D c;
-			switch(aPacks[i].type)
-			{
-			case PACK_AMMO:
-				{
-					pos = aPackPlaces[i]-vOffset;
-					c.x = pack_ammo.GetRotationX();
-					c.y = pack_ammo.GetRotationY();
-					pack_ammo.Draw(pos.x, pos.y, 0,
-						c.x, c.y, 0.8f);
-				}break;
-			case PACK_GRENADE:
-				{
-					pos = aPackPlaces[i]-vOffset;
-					c.x = pack_grenade.GetRotationX();
-					c.y = pack_grenade.GetRotationY();
-					pack_grenade.Draw(pos.x, pos.y, 0,
-						c.x, c.y, 0.8f);
-					
-				}break;
-			case PACK_HEALTH:
-				{
-					pos = aPackPlaces[i]-vOffset;
-					c.x = pack_health.GetRotationX();
-					c.y = pack_health.GetRotationY();
-					pack_health.Draw(pos.x, pos.y, 0,
-						c.x, c.y, 0.8f);
-					
-				}break;
-			}
-		}
-	
-	TEXTUREVERTEX *pTexVertex;
-	//draw static and dunamic objects
-	g_pDevice->SetFVF(D3DFVF_TEXTUREVERTEX);
-	g_pDevice->SetStreamSource(0, g_pTerrainVB, 0, sizeof(TEXTUREVERTEX));
-	
-	hr = g_pTerrainVB->Lock(0, (g_iNumWallVertices+g_iNumBodyVertices)
-		*sizeof(COLORVERTEX), (void**)&pTexVertex, 0);
-	if(FAILED(hr))
-		return hr;
-	
-	//fill buffer with static vertices
-	VECTOR2D v;
-	for(int i=0; i<g_iNumWalls; i++)
-		for(int j=0; j<aWalls[i].iNumVertices; j++)
-		{
-			v  = aWalls[i].lpVertices[j]-vOffset; 
-			pTexVertex->x = v.x;
-			pTexVertex->y = v.y;
-			pTexVertex->z = 0.0f;	
-			pTexVertex->rhw = 0.0f;
-			pTexVertex->u = g_vWallTex[i][j].x;
-			pTexVertex->v = g_vWallTex[i][j].y;
-			pTexVertex++;
-		}
-	
-	//draw static objects
-	int iOffset = 0;
-	for(int i=0; i<g_iNumWalls; i++)
-	{
-		g_pDevice->SetTexture(0, g_aMaterials[aWalls[i].lMaterialID].pTexture);
-		hr = g_pDevice->DrawPrimitive(D3DPT_TRIANGLEFAN, iOffset, aWalls[i].iNumVertices-2);
-		if(FAILED(hr))
-			return hr;
-		g_pDevice->SetTexture(0, 0);
-
-		iOffset += aWalls[i].iNumVertices;
-	}
-	
-	//fill buffer with dunamic vertices
-	for(int i=0; i<g_iNumBodies; i++)
-		for(int j=0; j<aBodies[i].iNumVertices; j++)
-		{
-			v  = aBodies[i].lpVertices[j]-vOffset;
-			pTexVertex->x = v.x;
-			pTexVertex->y = v.y;
-			pTexVertex->z = 0.0f;	
-			pTexVertex->rhw = 0.0f;
-			pTexVertex->u = g_vBodyTex[i][j].x;
-			pTexVertex->v = g_vBodyTex[i][j].y;
-			pTexVertex++;
-		}
-
-	//draw dunamic objects
-	for(int i=0; i<g_iNumBodies; i++)
-	{
-		g_pDevice->SetTexture(0, g_aMaterials[aBodies[i].lMaterialID].pTexture);
-		hr = g_pDevice->DrawPrimitive(D3DPT_TRIANGLEFAN, iOffset, aBodies[i].iNumVertices-2);
-		if(FAILED(hr))
-			return hr;
-		g_pDevice->SetTexture(0, 0);
-
-		iOffset += aBodies[i].iNumVertices;
-	}
-
-	g_pTerrainVB->Unlock();
-
-	//draw particles
-	g_pDevice->SetFVF(D3DFVF_COLORVERTEX);
-	g_pDevice->SetStreamSource(0, g_pParticleVB, 0, sizeof(COLORVERTEX));
-
-	//enable effets
-	g_pDevice->SetRenderState(D3DRS_POINTSPRITEENABLE, TRUE);
-	g_pDevice->SetRenderState(D3DRS_POINTSCALEENABLE, TRUE);
-	g_pDevice->SetRenderState(D3DRS_POINTSIZE, FtoDW(20.0f));
-	
-	g_pDevice->SetRenderState(D3DRS_ALPHABLENDENABLE, TRUE);
-	g_pDevice->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_ONE);
-	g_pDevice->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_ONE);
-
-	DWORD c1 = D3DCOLOR_XRGB(128, 128, 128);
-	DWORD c2 = D3DCOLOR_ARGB(0, 128, 128, 128);
-	
-	int iSizeToLock = (g_FireParticleCnt+
-		g_SmokeParticleCnt+g_CustomParticleCnt)*
-		sizeof(COLORVERTEX);
-	
-	COLORVERTEX *pColVertex;
-	hr = g_pParticleVB->Lock(0, iSizeToLock, (void**)&pColVertex, 0);
-	if(FAILED(hr))
-		return hr;
-
-	DWORD color;
-	PARTICLE *ptr = g_pFire->next; //fire particles
-	while(ptr)
-	{
-		pColVertex->x = ptr->Pos.x-vOffset.x;
-		pColVertex->y = ptr->Pos.y-vOffset.y;
-		pColVertex->z = 0.0f;
-		pColVertex->rhw = 0.0f;
-		pColVertex->color = ptr->color_current.GetColor();
-		
-		pColVertex++;
-		ptr = ptr->next;
-	}
-	if(g_FireParticleCnt)
-	{
-		g_pDevice->SetTexture(0, g_pFireTexture);
-		hr = g_pDevice->DrawPrimitive(D3DPT_POINTLIST, 0, g_FireParticleCnt);
-		if(FAILED(hr))
-			return hr;
-		g_pDevice->SetTexture(0, 0);
-	}
-	
-	ptr = g_pSmoke->next; //smoke particles
-	while(ptr)
-	{
-		pColVertex->x = ptr->Pos.x-vOffset.x;
-		pColVertex->y = ptr->Pos.y-vOffset.y;
-		pColVertex->z = 0.0f;
-		pColVertex->rhw = 0.0f;
-		pColVertex->color = ptr->color_current.GetColor();
-
-		pColVertex++;
-		ptr = ptr->next;
-	}
-	if(g_SmokeParticleCnt)
-	{
-		g_pDevice->SetTexture(0, g_pSmokeTexture);
-		hr = g_pDevice->DrawPrimitive(D3DPT_POINTLIST, 
-			g_FireParticleCnt, g_SmokeParticleCnt);
-		if(FAILED(hr))
-			return hr;
-		g_pDevice->SetTexture(0, 0);
-	}
-
-	g_pDevice->SetRenderState(D3DRS_POINTSPRITEENABLE, FALSE);
-	g_pDevice->SetRenderState(D3DRS_POINTSCALEENABLE, FALSE);
-	g_pDevice->SetRenderState(D3DRS_POINTSIZE, FtoDW(1.5f));
-
-	g_pDevice->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE);
-
-	ptr = g_pCustom->next; //concrete particles
-	while(ptr)
-	{
-		pColVertex->x = ptr->Pos.x-vOffset.x;
-		pColVertex->y = ptr->Pos.y-vOffset.y;
-		pColVertex->z = 0.0f;
-		pColVertex->rhw = 0.0f;
-		pColVertex->color = ptr->color_current.GetColor();
-
-		pColVertex++;
-		ptr = ptr->next;
-	}
-	if(g_CustomParticleCnt)
-	{
-		hr = g_pDevice->DrawPrimitive(D3DPT_POINTLIST,
-			g_FireParticleCnt+g_SmokeParticleCnt, g_CustomParticleCnt);
-		if(FAILED(hr))
-			return hr;
-	}
-	
-	g_pParticleVB->Unlock();
-
-	
-	//draw FPS
-	if(tmFPS.Delta()>100)
-	{
-		nFPS = (int)((float)nFrameCount/tmFPS.Delta()*1000.f);
-		nFrameCount = 0;
-		tmFPS.Reset();
-	}
-	else
-	{
-		tmFPS.Update();
-		nFrameCount++;
-	}
-
-	char *szFPS = new char[256];
-	memset(szFPS, 0, 255);
-	itoa(nFPS, szFPS, 10);
-	char *szText = new char[256];		
-	memset(szText, 0, 255);
-	strcpy(szText, "FPS: ");
-	strcat(szText, szFPS);
-	RECT rc;
-	SetRect(&rc, 0, 0, 0, 0);
-	g_pSysFont->DrawTextA(szText, strlen(szText), &rc, DT_NOCLIP, D3DCOLOR_XRGB(100, 100, 255));
-	
-#ifdef DEBUG
-	g_pLine->Begin();
-	//foot platform
-	D3DXVECTOR2 *aVertices = new D3DXVECTOR2[m_aPlayers[0].body.iNumVertices+1];
-	for(int i=0; i<m_aPlayers[0].body.iNumVertices; i++)
-	{
-		aVertices[i].x = m_aPlayers[0].body.lpVertices[i].x-
-				m_aPlayers[0].body.Pos.x+(g_iScreenWidth>>1);
-		aVertices[i].y = m_aPlayers[0].body.lpVertices[i].y-
-				m_aPlayers[0].body.Pos.y+(g_iScreenHeight>>1);
-	}
-	aVertices[m_aPlayers[0].body.iNumVertices].x = m_aPlayers[0].body.lpVertices[0].x-
-				m_aPlayers[0].body.Pos.x+(g_iScreenWidth>>1);;
-	aVertices[m_aPlayers[0].body.iNumVertices].y = m_aPlayers[0].body.lpVertices[0].y-
-				m_aPlayers[0].body.Pos.y+(g_iScreenHeight>>1);;
-	g_pLine->Draw(aVertices, m_aPlayers[0].body.iNumVertices+1, D3DCOLOR_XRGB(0, 0, 255));
-	delete [] aVertices;
-	g_pLine->End();
-
-	//game statistic
-	if(g_bCollided)
-	{
-		strcpy(szText, "Collided\0");
-		SetRect(&rc, 0, 15, 0, 0);
-		g_pSysFont->DrawTextA(szText, strlen(szText), &rc, DT_NOCLIP, D3DCOLOR_XRGB(255, 255, 0));
-	}
-	//draw soldat action
-	memset(szText, 0, 255);
-	switch(m_aPlayers[0].state)
-	{
-	case IDLE:
-		strcpy(szText, "IDLE\0"); break;
-	case RUN:
-		strcpy(szText, "RUN\0"); break;
-	case SLIDE:
-		strcpy(szText, "SLIDE\0"); break;
-	case FLY:
-		strcpy(szText, "FLY\0"); break;
-	case FALL:
-		strcpy(szText, "FALL\0"); break;
-	}
-	SetRect(&rc, 0, 30, 0, 0);
-	g_pSysFont->DrawTextA(szText, strlen(szText), &rc, DT_NOCLIP, D3DCOLOR_XRGB(100, 100, 255));
-	
-	//draw body vel
-	memset(szText, 0, 256);
-	gcvt(m_aPlayers[0].body.Velocity.y, 3, szText);
-	SetRect(&rc, 0, 45, 0, 0);
-	g_pSysFont->DrawTextA(szText, strlen(szText), &rc, DT_NOCLIP, D3DCOLOR_XRGB(100, 100, 255));
-
-	memset(szText, 0, 256);
-	itoa(m_aPlayers[0].nVertexIndex, szText, 10);
-	SetRect(&rc, 0, 60, 0, 0);
-	g_pSysFont->DrawTextA(szText, strlen(szText), &rc, DT_NOCLIP, D3DCOLOR_XRGB(100, 100, 255));
-
-	for(int i=1; i<g_iNumPlayers; i++)
-	{
-		memset(szText, 0, 256);
-		itoa(m_aPlayers[i].nVertexIndex, szText, 10);
-		SetRect(&rc, 0, 75+i*15, 0, 0);
-		g_pSysFont->DrawTextA(szText, strlen(szText), &rc, 
-			DT_NOCLIP, D3DCOLOR_XRGB(255, 50, 50));
-	}
-
-	for(int i=0; i<g_iNumPlayers-1; i++)
-	{
-		memset(szText, 0, 256);
-		switch(m_AIStates[i])
-		{
-		case ATTACK:
-			strcpy(szText, "attack");
-			break;
-		case PURSUIT:
-			strcpy(szText, "pursuit");
-			break;
-		case RUNAWAY:
-			strcpy(szText, "runaway");
-			break;
-		case SEARCH_PACK:
-			strcpy(szText, "search_pack");
-			break;
-		}
-
-		SetRect(&rc, 25, 90+i*15, 0, 0);
-		g_pSysFont->DrawTextA(szText, strlen(szText), &rc, 
-			DT_NOCLIP, D3DCOLOR_XRGB(200, 200, 0));
-	}
-	
-	//draw gun ray
-	VECTOR2D vec_start(0.0f, -25.0f);
-	float fTheta = m_aPlayers[0].model.GetPart(BODY)->GetRotation();
-	fTheta *= (1-2*m_aPlayers[0].model.GetOrientation());
-	Rotate(&vec_start, 0, fTheta);
-	vec_start += g_vCenter;
-	aVertices = new D3DXVECTOR2[2];
-	aVertices[0] = D3DXVECTOR2(vec_start.x, vec_start.y);
-	aVertices[1] = D3DXVECTOR2(g_vCenter.x+m_aPlayers[0].cursor.x,
-		g_vCenter.y+m_aPlayers[0].cursor.y); 
-	g_pLine->Draw(aVertices, 2, D3DCOLOR_XRGB(255, 0, 0));
-#endif
-	
-	if(m_aPlayers[0].bAlive)
-	{
-		//draw UI elements
-		ui_health.Draw();
-		ui_rifle.Draw();
-		ui_grenade.Draw();
-
-		//health level
-		itoa(m_aPlayers[0].health, szText, 10);
-		strcat(szText, "%");
-		SetRect(&rc, (g_iScreenWidth>>1)+(ui_health.iWidth>>1), 
-			g_iScreenHeight-ui_health.iHeight+(ui_health.iWidth>>2), 0, 0);
-		g_pUIFont->DrawTextA(szText, strlen(szText), 
-			&rc, DT_NOCLIP, D3DCOLOR_XRGB(255, 255, 0));
-
-		//rifle ammo level
-		itoa(m_aPlayers[0].ammo[RIFLE], szText, 10);
-		SetRect(&rc, (ui_rifle.iWidth), g_iScreenHeight-
-			ui_rifle.iHeight+(ui_rifle.iHeight>>2), 0, 0);
-		g_pUIFont->DrawTextA(szText, strlen(szText),
-			&rc, DT_NOCLIP, D3DCOLOR_XRGB(255, 255, 0));
-
-		//grenade ammo level
-		itoa(m_aPlayers[0].ammo[GRENADE], szText, 10);
-		SetRect(&rc, g_iScreenWidth-(ui_grenade.iWidth>>1),
-			g_iScreenHeight-ui_grenade.iHeight+(ui_grenade.iHeight>>2), 
-			0, 0);
-		g_pUIFont->DrawTextA(szText, strlen(szText),
-			&rc, DT_NOCLIP, D3DCOLOR_XRGB(255, 255, 0));
-
-		//draw cursor
-		VECTOR2D vec = Normalize(m_aPlayers[0].cursor)*100;
-		float fTheta = atan2(vec.y, vec.x);
-		vec += g_vCenter;
-		cur_ptr.Draw(vec.x, vec.y, -fTheta, 
-			cur_ptr.GetRotationX(),
-			cur_ptr.GetRotationY(), 0.6f);
-	}
-
-	if(g_bShowStat)
-	{
-		g_pParticleVB->Lock(0, 4*sizeof(COLORVERTEX), (void**)&pColVertex, 0);
-		
-		//left, top
-		pColVertex->x = g_vCenter.x*0.5f;
-		pColVertex->y = g_vCenter.y*0.5f;
-		pColVertex->z = 0.0f;
-		pColVertex->rhw = 0.0f;
-		pColVertex->color = D3DCOLOR_ARGB(128, 128, 128, 128);
-		pColVertex++;
-
-		//right, top
-		pColVertex->x = g_vCenter.x+g_vCenter.x*0.5f;
-		pColVertex->y = g_vCenter.y*0.5f;
-		pColVertex->z = 0.0f;
-		pColVertex->rhw = 0.0f;
-		pColVertex->color = D3DCOLOR_ARGB(128, 160, 160, 160);
-		pColVertex++;
-
-
-		//right, bottom
-		pColVertex->x = g_vCenter.x+g_vCenter.x*0.5f;
-		pColVertex->y = g_vCenter.y*0.5f+20*(g_iNumPlayers+2);
-		pColVertex->z = 0.0f;
-		pColVertex->rhw = 0.0f;
-		pColVertex->color = D3DCOLOR_ARGB(128, 190, 190, 190);
-		pColVertex++;
-
-		//left, bottom
-		pColVertex->x = g_vCenter.x*0.5f;
-		pColVertex->y = g_vCenter.y*0.5f+20*(g_iNumPlayers+2);
-		pColVertex->z = 0.0f;
-		pColVertex->rhw = 0.0f;
-		pColVertex->color = D3DCOLOR_ARGB(128, 160, 160, 160);
-
-		g_pParticleVB->Unlock();
-
-		g_pDevice->SetRenderState(D3DRS_ALPHABLENDENABLE, TRUE);
-		g_pDevice->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_SRCCOLOR);
-		g_pDevice->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_DESTCOLOR);
-
-		g_pDevice->DrawPrimitive(D3DPT_TRIANGLEFAN, 0, 2);
-
-		g_pDevice->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE);
-
-		SetRect(&rc, (g_iScreenWidth>>2)+10, (g_iScreenHeight>>2)+10, 0, 0);
-		g_pUIFont->DrawTextA("Players", 7, &rc, DT_NOCLIP, D3DCOLOR_ARGB(200, 255, 10, 10));
-
-		SetRect(&rc, (g_iScreenWidth>>1)-20, (g_iScreenHeight>>2)+10, 0, 0);
-		g_pUIFont->DrawTextA("Frags", 5, &rc, DT_NOCLIP, D3DCOLOR_ARGB(200, 255, 10, 10));
-
-		SetRect(&rc, (g_iScreenWidth>>1)+(g_iScreenWidth>>2)-60, (g_iScreenHeight>>2)+10, 0, 0);
-		g_pUIFont->DrawTextA("Deaths", 6, &rc, DT_NOCLIP, D3DCOLOR_ARGB(200, 255, 10, 10));
-
-		int *ind = new int[g_iNumPlayers];
-		for(int i=0; i<g_iNumPlayers; i++)
-			ind[i] = i;
-		qsort(ind, g_iNumPlayers, sizeof(int), &ScoreCmp);
-		
-		char szVal[256];
-		DWORD color = D3DCOLOR_ARGB(200, 10, 10, 255);
-		for(int i=0; i<g_iNumPlayers; i++)
-		{
-			//player name
-			strset(szText, 0);
-			strcpy(szText, "player_");
-			itoa(ind[i]+1, szVal, 10);
-			strcat(szText, szVal);
-			SetRect(&rc, (g_iScreenWidth>>2)+10, (g_iScreenHeight>>2)+20*(i+2), 0, 0);
-			g_pUIFont->DrawTextA(szText, strlen(szText), &rc, DT_NOCLIP, color);
-
-			strset(szText, 0);
-			itoa(m_aFrags[ind[i]], szText, 10);
-			SetRect(&rc, (g_iScreenWidth>>1)-20, (g_iScreenHeight>>2)+20*(i+2), 0, 0);
-			g_pUIFont->DrawTextA(szText, strlen(szText), &rc, DT_NOCLIP, color);
-
-			strset(szText, 0);
-			itoa(m_aDeath[ind[i]], szText, 10);
-			SetRect(&rc, (g_iScreenWidth>>1)+(g_iScreenWidth>>2)-60, (g_iScreenHeight>>2)+20*(i+2), 0, 0);
-			g_pUIFont->DrawTextA(szText, strlen(szText), &rc, DT_NOCLIP, color);
-		}
-	}
-	//===========end drawing=======//
-
-	g_pDevice->EndScene();
-	return g_pDevice->Present( NULL, NULL, NULL, NULL );
+	SDL_SetRenderDrawColor(g_renderer, 0, 0, 0, 255);
+	SDL_RenderClear(g_renderer);
+	SDL_RenderPresent(g_renderer);
+	return S_OK;
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 HRESULT AddPlayer()
@@ -1731,22 +1189,24 @@ HRESULT AddPlayer()
 	m_aPlayers[index].ID = index;
 
 	HRESULT hr;
-	hr = m_aPlayers[index].Init(g_pDevice, "data/models/soldat.m2d",
+	hr = m_aPlayers[index].Init(g_renderer, "data/models/soldat.m2d",
 					 "data/meshes/body.dat", "data/meshes/ragdoll/");
-    if(FAILED(hr))
+	if (FAILED(hr)) {
+		std::fprintf(stderr, "AddPlayer: PLAYER::Init failed (model/body/ragdoll). SDL: %s\n", SDL_GetError());
 		return hr;
+	}
 
 	m_aPlayers[index].model.SetScale(0.4f);
 	m_aPlayers[index].model.SetAnimation(&animations[ANIMATION_IDLE]);
 	m_aPlayers[index].model.StartAnimation();
-	
+
 	m_aPlayers[index].tmAltShoot.LastTickCount += 2200;
 
 	VECTOR2D *aVertices = new VECTOR2D[6];
 	FILE *f = fopen("data/meshes/grenade.dat", "r");
 	if(!f)
 		return E_FAIL;
-	
+
 	int iNumVerts;
 	float x, y;
 
@@ -1757,12 +1217,12 @@ HRESULT AddPlayer()
 		aVertices[i] = VECTOR2D(x, y);
 	}
 	fclose(f);
-	
-	m_aPlayers[index].grenade_body = RIGIDBODY(aVertices, 
+
+	m_aPlayers[index].grenade_body = RIGIDBODY(aVertices,
 		iNumVerts);
 	m_aPlayers[index].grenade_body.fRestitution = 0.6f;
 	delete [] aVertices;
-	
+
 	m_aFrags[index] = 0;
 	m_aDeath[index] = 0;
 
@@ -1844,74 +1304,97 @@ HRESULT LoadGameData()
 	//m_aPlayers = new PLAYER[MAX_PLAYERS];
 	
 	hr = AddPlayer();
-	if(FAILED(hr))
+	if (FAILED(hr)) {
+		std::fprintf(stderr, "LoadGameData: AddPlayer failed\n");
 		return hr;
+	}
 	//=============end soldat model========//
 	//==========load enviroment objs=======//
 	float fPack_scale = 0.8f;
 
-	hr = pack_ammo.Init(g_pDevice, "data/sprites/ammo_pack.tga");
-	if(FAILED(hr))
+	hr = pack_ammo.Init(g_renderer, "data/sprites/ammo_pack.tga");
+	if (FAILED(hr)) {
+		std::fprintf(stderr, "LoadGameData: pack_ammo (%s) failed: %s\n", "data/sprites/ammo_pack.tga", SDL_GetError());
 		return hr;
+	}
 	pack_ammo.SetScale(fPack_scale);
 
-	hr = pack_grenade.Init(g_pDevice, "data/sprites/grenade_pack.tga");
-	if(FAILED(hr))
+	hr = pack_grenade.Init(g_renderer, "data/sprites/grenade_pack.tga");
+	if (FAILED(hr)) {
+		std::fprintf(stderr, "LoadGameData: pack_grenade (%s) failed: %s\n", "data/sprites/grenade_pack.tga", SDL_GetError());
 		return hr;
+	}
 	pack_grenade.SetScale(fPack_scale);
 
-	hr = pack_health.Init(g_pDevice, "data/sprites/health_pack.tga");
-	if(FAILED(hr))
+	hr = pack_health.Init(g_renderer, "data/sprites/health_pack.tga");
+	if (FAILED(hr)) {
+		std::fprintf(stderr, "LoadGameData: pack_health (%s) failed: %s\n", "data/sprites/health_pack.tga", SDL_GetError());
 		return hr;
+	}
 	pack_health.SetScale(fPack_scale);
 
-	hr = D3DXCreateTextureFromFile(g_pDevice, 
-		"data/sprites/fire.tga", &g_pFireTexture);
-	if(FAILED(hr))
-		return hr;
+	g_pFireTexture = IMG_LoadTexture(g_renderer, "data/sprites/fire.tga");
+	if (!g_pFireTexture) {
+		std::fprintf(stderr, "LoadGameData: fire texture failed: %s\n", SDL_GetError());
+		return E_FAIL;
+	}
 	
 	g_pFire		= new PARTICLE();
 	g_pSmoke	= new PARTICLE();
 	g_pCustom	= new PARTICLE();
 	//==========end enviroment objs=======//
 	//===============load weapons=========//
-	hr = rifle.Init(g_pDevice, "data/sprites/rifle.tga");
-	if(FAILED(hr))
+	hr = rifle.Init(g_renderer, "data/sprites/rifle.tga");
+	if (FAILED(hr)) {
+		std::fprintf(stderr, "LoadGameData: rifle (%s) failed: %s\n", "data/sprites/rifle.tga", SDL_GetError());
 		return hr;
+	}
 	rifle.SetXYPos(15, 25);
 	rifle.SetRotation(PI/4.0f);
 	
-	hr = grenade.Init(g_pDevice, "data/sprites/grenade.tga");
-	if(FAILED(hr))
+	hr = grenade.Init(g_renderer, "data/sprites/grenade.tga");
+	if (FAILED(hr)) {
+		std::fprintf(stderr, "LoadGameData: grenade (%s) failed: %s\n", "data/sprites/grenade.tga", SDL_GetError());
 		return hr;
+	}
 
-	hr = fire.Init(g_pDevice, "data/sprites/shoot_fire.tga");
-	if(FAILED(hr))
+	hr = fire.Init(g_renderer, "data/sprites/shoot_fire.tga");
+	if (FAILED(hr)) {
+		std::fprintf(stderr, "LoadGameData: fire (%s) failed: %s\n", "data/sprites/shoot_fire.tga", SDL_GetError());
 		return hr;
+	}
 	//=================end weapons========//
 
 	//============load UI elements========//
-	hr = ui_health.Init(g_pDevice, "data/sprites/health_UI.tga");
-	if(FAILED(hr))
+	hr = ui_health.Init(g_renderer, "data/sprites/health_UI.tga");
+	if (FAILED(hr)) {
+		std::fprintf(stderr, "LoadGameData: ui_health (%s) failed: %s\n", "data/sprites/health_UI.tga", SDL_GetError());
 		return hr;
+	}
 	ui_health.SetXYPos(g_iScreenWidth>>1, 
 		g_iScreenHeight-ui_health.iHeight+(ui_health.iHeight>>2));
 
-	hr = ui_rifle.Init(g_pDevice, "data/sprites/rifle_UI.tga");
-	if(FAILED(hr))
+	hr = ui_rifle.Init(g_renderer, "data/sprites/rifle_UI.tga");
+	if (FAILED(hr)) {
+		std::fprintf(stderr, "LoadGameData: ui_rifle (%s) failed: %s\n", "data/sprites/rifle_UI.tga", SDL_GetError());
 		return hr;
+	}
 	ui_rifle.SetXYPos(ui_rifle.iWidth>>1,
 		g_iScreenHeight-ui_rifle.iHeight+(ui_rifle.iHeight>>2));
 
-	hr = ui_grenade.Init(g_pDevice, "data/sprites/grenade_UI.tga");
-	if(FAILED(hr))
+	hr = ui_grenade.Init(g_renderer, "data/sprites/grenade_UI.tga");
+	if (FAILED(hr)) {
+		std::fprintf(stderr, "LoadGameData: ui_grenade (%s) failed: %s\n", "data/sprites/grenade_UI.tga", SDL_GetError());
 		return hr;
+	}
 	ui_grenade.SetXYPos(g_iScreenWidth-ui_grenade.iWidth,
 		g_iScreenHeight-ui_grenade.iHeight+(ui_grenade.iHeight>>2));
 	
-	hr = cur_ptr.Init(g_pDevice, "data/sprites/cursor.tga");
-	if(FAILED(hr))
+	hr = cur_ptr.Init(g_renderer, "data/sprites/cursor.tga");
+	if (FAILED(hr)) {
+		std::fprintf(stderr, "LoadGameData: cur_ptr (%s) failed: %s\n", "data/sprites/cursor.tga", SDL_GetError());
 		return hr;
+	}
 	cur_ptr.SetScale(0.6f);
 	//==============end UI elements=======//
 
@@ -1927,13 +1410,17 @@ HRESULT LoadMap(const char* szFileName)
 	if(!f)
 		return E_FAIL;
 
-	for(int i=0; i<NUM_MATERIALS; i++)
-	{
+	for (int i = 0; i < NUM_MATERIALS; i++) {
 		fscanf(f, "%f%f", &g_aMaterials[i].fWidth, &g_aMaterials[i].fHeight);
-		hr = D3DXCreateTextureFromFile(g_pDevice, g_szMaterialFile[i],
-			&g_aMaterials[i].pTexture);
-		if(FAILED(hr))
-			return hr;
+		if (g_szMaterialFile[i] == nullptr) {
+			g_aMaterials[i].pTexture = nullptr;
+			continue;
+		}
+		g_aMaterials[i].pTexture = IMG_LoadTexture(g_renderer, g_szMaterialFile[i]);
+		if (!g_aMaterials[i].pTexture) {
+			fclose(f);
+			return E_FAIL;
+		}
 	}
 
 	fclose(f);
@@ -2144,33 +1631,36 @@ HRESULT LoadMap(const char* szFileName)
 	return S_OK;
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////
+HRESULT InitGfx(SDL_Window* window, SDL_Renderer* renderer)
+{
+	if (!window || !renderer) {
+		return E_FAIL;
+	}
+	g_window   = window;
+	g_renderer = renderer;
+	// Font cache, vertex batches and the line renderer come back in Phase 1k.2.
+	return S_OK;
+}
 void Cleanup()
 {
-	// Input devices owned by the SDL platform layer — nothing to release here.
-
-	if(g_pSysFont)
-		g_pSysFont->Release();
-
-	if(g_pUIFont)
-		g_pUIFont->Release();
-
-	if(g_pFireTexture)
-		g_pFireTexture->Release();
-
-	if(g_pSmokeTexture)
-		g_pSmokeTexture->Release();
-	
-	if(g_pTerrainVB)
-		g_pTerrainVB->Release();
-	
-	if(g_pParticleVB)
-		g_pParticleVB->Release();
-	
-	if(g_pDevice)
-        g_pDevice->Release();
-
-    if(g_pD3D)
-		g_pD3D->Release();
+	for (int i = 0; i < MAX_MATERIALS; i++) {
+		if (g_aMaterials[i].pTexture) {
+			SDL_DestroyTexture(g_aMaterials[i].pTexture);
+			g_aMaterials[i].pTexture = nullptr;
+		}
+	}
+	if (g_pFireTexture) {
+		SDL_DestroyTexture(g_pFireTexture);
+		g_pFireTexture = nullptr;
+	}
+	if (g_pSmokeTexture) {
+		SDL_DestroyTexture(g_pSmokeTexture);
+		g_pSmokeTexture = nullptr;
+	}
+	// Renderer / window are owned by the SDL platform layer.
+	g_renderer = nullptr;
+	g_window   = nullptr;
 }
 ////////////////////////////////////////////ARTIFICIAL INTELEGENCE//////////////////////////////////
 void RunToWayPoint(bool *actions, int index, int WPIndex)
@@ -2403,178 +1893,21 @@ void GetAIActions(int index, bool *actions)
 	m_aPlayers[index].cursor = view_vec;
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-HRESULT InitD3D(HWND hwndParent)
-{
-	g_hwndParent = hwndParent;
-	
-	g_pD3D = 0;
-	g_pDevice = 0;
-	g_pLine = 0;
-	g_pSysFont = 0;
-	g_pUIFont = 0;
-	g_pTerrainVB = 0;
-	g_pParticleVB = 0;
-	
-	g_pD3D = Direct3DCreate9(D3D_SDK_VERSION);
-	if(!g_pD3D)
-		return E_FAIL;
-	
-	HRESULT hr;
-	D3DPRESENT_PARAMETERS d3dpp;
-	memset(&d3dpp, 0, sizeof(d3dpp));
-	d3dpp.Windowed = (BOOL)!g_bFullScreen;
-	d3dpp.SwapEffect = D3DSWAPEFFECT_DISCARD;
-	d3dpp.EnableAutoDepthStencil = TRUE;
-	d3dpp.AutoDepthStencilFormat = D3DFMT_D16;
-	d3dpp.PresentationInterval = D3DPRESENT_INTERVAL_IMMEDIATE;
-	d3dpp.BackBufferCount = 1;
-	d3dpp.MultiSampleType = (D3DMULTISAMPLE_TYPE)g_iAALevel;
-		
-	if(g_bFullScreen)
-	{
-		d3dpp.BackBufferWidth = g_iScreenWidth;
-		d3dpp.BackBufferHeight = g_iScreenHeight;
-		d3dpp.FullScreen_RefreshRateInHz = g_iRefreshRate;
-		for(int fmt = D3DFMT_A4R4G4B4; fmt>=D3DFMT_A8R8G8B8; fmt--)
-			if(SUCCEEDED(g_pD3D->CheckDeviceType(D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL,
-									(D3DFORMAT)fmt, (D3DFORMAT)fmt, FALSE)))
-				d3dpp.BackBufferFormat = (D3DFORMAT)fmt;
-		if(d3dpp.BackBufferFormat == D3DFMT_UNKNOWN)
-			return E_FAIL;
-	}
-	else
-	{
-		D3DDISPLAYMODE d3ddm;
-		hr = g_pD3D->GetAdapterDisplayMode(D3DADAPTER_DEFAULT, &d3ddm);
-		if(FAILED(hr))
-			return hr;
-		d3dpp.BackBufferFormat = d3ddm.Format;
-	}
-
-	hr = g_pD3D->CreateDevice(D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, hwndParent,
-							  D3DCREATE_SOFTWARE_VERTEXPROCESSING, 
-							  &d3dpp, &g_pDevice);
-	if(FAILED(hr))
-		return hr;
-	
-	//create vertex buffers
-	hr = g_pDevice->CreateVertexBuffer(BUFFERSIZE*sizeof(TEXTUREVERTEX), D3DUSAGE_WRITEONLY, 
-		D3DFVF_COLORVERTEX, D3DPOOL_DEFAULT, &g_pTerrainVB, 0);
-	if(FAILED(hr))
-		return hr;
-
-	hr = g_pDevice->CreateVertexBuffer(3*MAX_PARTICLES*sizeof(COLORVERTEX), D3DUSAGE_WRITEONLY,
-		D3DFVF_COLORVERTEX, D3DPOOL_DEFAULT, &g_pParticleVB, 0);
-	if(FAILED(hr))
-		return hr;
-	
-	//create helper objects
-	hr = D3DXCreateLine(g_pDevice, &g_pLine);
-	if(FAILED(hr))
-		return hr;
-
-	//create fonts
-	LOGFONT lf;
-	memset(&lf, 0, sizeof(lf));
-	lf.lfWidth = 8;
-	lf.lfHeight = 12;
-	lf.lfCharSet = RUSSIAN_CHARSET;
-	lf.lfQuality = NONANTIALIASED_QUALITY;
-	strcpy(lf.lfFaceName, "Arial");
-    	
-	hr = D3DXCreateFontIndirect(g_pDevice, &lf, &g_pSysFont);
-	if(FAILED(hr))
-		return hr;
-
-	memset(&lf, 0, sizeof(lf));
-	lf.lfWidth = 8;
-	lf.lfHeight = 8;
-	lf.lfWeight = 700;
-	lf.lfCharSet = RUSSIAN_CHARSET;
-	lf.lfQuality = ANTIALIASED_QUALITY;
-	strcpy(lf.lfFaceName, "Lucida console");
-
-	hr = D3DXCreateFontIndirect(g_pDevice, &lf, &g_pUIFont);
-	if(FAILED(hr))
-		return hr;
-
-	//Disable lighting
-	g_pDevice->SetRenderState(D3DRS_LIGHTING, FALSE);
-    //Disable Zbuffer
-	g_pDevice->SetRenderState(D3DRS_ZENABLE, FALSE);
-	g_pDevice->SetRenderState(D3DRS_ZWRITEENABLE, FALSE);
-	//Disable culling
-	g_pDevice->SetRenderState(D3DRS_CULLMODE, D3DCULL_NONE);
-
-	return S_OK;
-}
-///////////////////////////////////////////////////////////////////////////////////////////////////
-HRESULT RestoreD3D()
-{
-	HRESULT hr;
-	
-	while((hr = g_pDevice->TestCooperativeLevel()) == 
-		D3DERR_DEVICELOST)
-	{
-	}
-
-	/*D3DPRESENT_PARAMETERS d3dpp;
-	memset(&d3dpp, 0, sizeof(d3dpp));
-	d3dpp.Windowed = (BOOL)g_bWindowed;
-	d3dpp.SwapEffect = D3DSWAPEFFECT_DISCARD;
-	d3dpp.EnableAutoDepthStencil = TRUE;
-	d3dpp.AutoDepthStencilFormat = D3DFMT_D16;
-	d3dpp.PresentationInterval = D3DPRESENT_INTERVAL_IMMEDIATE;
-	d3dpp.BackBufferCount = 1;
-	d3dpp.hDeviceWindow = g_hwndParent;
-	
-	if(!g_bWindowed)
-	{
-		d3dpp.BackBufferWidth = g_iScreenWidth;
-		d3dpp.BackBufferHeight = g_iScreenHeight;
-		for(int fmt = D3DFMT_A4R4G4B4; fmt>=D3DFMT_A8R8G8B8; fmt--)
-			if(SUCCEEDED(g_pD3D->CheckDeviceType(D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL,
-									(D3DFORMAT)fmt, (D3DFORMAT)fmt, FALSE)))
-				d3dpp.BackBufferFormat = (D3DFORMAT)fmt;
-		if(d3dpp.BackBufferFormat == D3DFMT_UNKNOWN)
-			return E_FAIL;
-	}
-	else
-	{
-		D3DDISPLAYMODE d3ddm;
-		hr = g_pD3D->GetAdapterDisplayMode(D3DADAPTER_DEFAULT, &d3ddm);
-		if(FAILED(hr))
-			return hr;
-		d3dpp.BackBufferFormat = d3ddm.Format;
-	}*/
-
-	return InitD3D(g_hwndParent);	
-}
-///////////////////////////////////////////////////////////////////////////////////////////////////
 HRESULT ShowSplash()
 {
-	const float splash_width = 703.0f;
-	const float splash_height = 251.0f;
-	
+	if (!g_renderer) {
+		return E_FAIL;
+	}
 	SPRITE splash;
-	
-	if(FAILED(splash.Init(g_pDevice, "data/sprites/splash.jpg")))
-		return S_OK;
-
-	HRESULT hr = g_pDevice->BeginScene();
-	if(FAILED(hr))
-		return hr;
-	hr = g_pDevice->Clear(0, 0, D3DCLEAR_TARGET, D3DCOLOR_XRGB(0, 0, 0), 1.0f, 0L);
-
-	VECTOR2D pos(g_iScreenWidth>>1, g_iScreenHeight>>1);
-	float fScale = (float)g_iScreenWidth/1024;
-
-	splash.SetXYPos(pos.x, pos.y);
-	splash.SetScale(fScale);
+	if (FAILED(splash.Init(g_renderer, "data/sprites/splash.jpg"))) {
+		return S_OK;  // matches original: missing splash is non-fatal
+	}
+	SDL_SetRenderDrawColor(g_renderer, 0, 0, 0, 255);
+	SDL_RenderClear(g_renderer);
+	splash.SetXYPos(g_iScreenWidth >> 1, g_iScreenHeight >> 1);
+	splash.SetScale(static_cast<float>(g_iScreenWidth) / 1024.0f);
 	splash.Draw();
-	g_pDevice->EndScene();
-	g_pDevice->Present(0, 0, 0, 0);
-
+	SDL_RenderPresent(g_renderer);
 	return S_OK;
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -2597,4 +1930,4 @@ int ScoreCmp(const void* arg_1, const void* arg_2)
 			return 0;
 	}
 }
-
+
