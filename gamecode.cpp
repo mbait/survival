@@ -162,12 +162,18 @@ void AddCustomParticles(VECTOR2D vPoint, VECTOR2D vNormal, COLOR color)
 	float fTheta = atan2(vNormal.y, vNormal.x)+PI/2.0f;
 	float fVel;
 	PARTICLE p;
-	
+
+	// Offset spawn slightly along the surface normal so static-wall
+	// particles don't get re-absorbed by gravity before they're visible.
+	// Dynamic bodies move away on impact and don't need this; static
+	// walls do.
+	const VECTOR2D vSpawn = vPoint + Normalize(vNormal) * 4.0f;
+
 	for(int i=0; i<CONCRETE_NUMPARTICLES && g_CustomParticleCnt<MAX_PARTICLES; i++)
 	{
 		fVel = CONCRETEPARTICLE_VEL*RANDOM;
-		
-		p.Pos = vPoint;
+
+		p.Pos = vSpawn;
 		p.Velocity = VECTOR2D(fTheta-PI*RANDOM)*fVel;
 		p.Acceleration = VECTOR2D(0, 0);
 		
