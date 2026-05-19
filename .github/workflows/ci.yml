@@ -11,8 +11,37 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # -----------------------------------------------------------------
+  # Single static-analysis gate that all build jobs depend on. Runs
+  # once per push regardless of how many compilers are in the build
+  # matrix.
+  # -----------------------------------------------------------------
+  check:
+    name: format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install clang-format
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-format-18
+          sudo update-alternatives --install /usr/bin/clang-format clang-format \
+              /usr/bin/clang-format-18 100
+
+      - name: Verify formatting
+        run: |
+          mapfile -t FILES < <(find . -type f \( -name '*.cpp' -o -name '*.h' \) \
+              -not -path './build/*' -not -path './.git/*' \
+              -not -path './d3dg*/*' -not -path './a/*' \
+              -not -path './Debug/*' -not -path './Release/*' \
+              -not -path './builds/*')
+          clang-format --version
+          clang-format --dry-run --Werror "${FILES[@]}"
+
   build:
     name: ${{ matrix.preset }}
+    needs: check
     runs-on: ${{ matrix.runner }}
     env:
       VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
