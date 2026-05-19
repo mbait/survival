@@ -107,8 +107,6 @@ jobs:
     name: ${{ matrix.preset }}
     needs: check
     runs-on: ${{ matrix.runner }}
-    env:
-      VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
     strategy:
       fail-fast: false
       matrix:
@@ -139,19 +137,25 @@ jobs:
           key: ${{ matrix.preset }}
           max-size: 200M
 
-      # ---------------- Windows: vcpkg binary cache via GHA ----------
-      - name: Export GHA cache env vars (Windows)
-        if: runner.os == 'Windows'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
-            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
-
+      # ---------------- Windows: vcpkg setup + manifest-dir cache -----
+      # The 'x-gha' vcpkg binary backend was removed upstream in 2025
+      # (vcpkg warns and ignores it). We cache the per-build
+      # vcpkg_installed/ directory directly via actions/cache instead:
+      # on a cache hit, manifest-mode vcpkg detects the existing
+      # install on disk and skips the source-build entirely.
       - name: Set VCPKG_ROOT (Windows)
         if: runner.os == 'Windows'
         shell: cmd
         run: echo VCPKG_ROOT=%VCPKG_INSTALLATION_ROOT%>>%GITHUB_ENV%
+
+      - name: Cache vcpkg_installed (Windows)
+        if: runner.os == 'Windows'
+        uses: actions/cache@v4
+        with:
+          path: ${{ github.workspace }}/build/windows-msvc/vcpkg_installed
+          key:  vcpkg-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}
+          restore-keys: |
+            vcpkg-${{ runner.os }}-
 
       # ---------------- configure / build / test via presets ---------
       - name: Configure
