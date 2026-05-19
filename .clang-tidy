@@ -1,0 +1,42 @@
+---
+# clang-tidy check set for the survival port.
+#
+# Starting point: noisy categories are disabled (readability-magic-numbers,
+# identifier-length, function-cognitive-complexity) because the legacy
+# code is full of them and they're either intentional (audit physics
+# constants) or low-value (1-letter math vars match the geometry papers).
+#
+# Specific checks are enabled below; the negative list culls the worst
+# offenders that would otherwise bury the signal.
+
+Checks: >
+  -*,
+  bugprone-*,
+  -bugprone-easily-swappable-parameters,
+  -bugprone-narrowing-conversions,
+  -bugprone-implicit-widening-of-multiplication-result,
+  clang-analyzer-*,
+  modernize-*,
+  -modernize-use-trailing-return-type,
+  -modernize-use-nodiscard,
+  -modernize-use-auto,
+  performance-*,
+  readability-*,
+  -readability-identifier-length,
+  -readability-magic-numbers,
+  -readability-function-cognitive-complexity,
+  -readability-named-parameter,
+  -readability-uppercase-literal-suffix,
+  -readability-isolate-declaration,
+  -readability-implicit-bool-conversion,
+  -readability-braces-around-statements,
+  -readability-else-after-return,
+
+# Headers we own are linted; bundled / vendored ones (build/_deps/) are not.
+HeaderFilterRegex: '^(?!.*/build/.*).*\.h$'
+
+# Use the project's clang-format style for any auto-fix output.
+FormatStyle: file
+
+# Don't escalate to errors yet — the very first run is for triage.
+WarningsAsErrors: ''
