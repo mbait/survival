@@ -1,0 +1,81 @@
+{
+    "version": 3,
+    "cmakeMinimumRequired": { "major": 3, "minor": 21 },
+
+    "configurePresets": [
+        {
+            "name": "base",
+            "hidden": true,
+            "binaryDir": "${sourceDir}/build/${presetName}",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+            }
+        },
+        {
+            "name": "linux-base",
+            "hidden": true,
+            "inherits": "base",
+            "generator": "Ninja",
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Linux"
+            }
+        },
+        {
+            "name": "linux-gcc",
+            "inherits": "linux-base",
+            "displayName": "Linux GCC (Release)",
+            "cacheVariables": {
+                "CMAKE_CXX_COMPILER": "g++"
+            }
+        },
+        {
+            "name": "linux-clang",
+            "inherits": "linux-base",
+            "displayName": "Linux Clang (Release)",
+            "cacheVariables": {
+                "CMAKE_CXX_COMPILER": "clang++"
+            }
+        },
+        {
+            "name": "windows-msvc",
+            "inherits": "base",
+            "displayName": "Windows MSVC (Release, vcpkg)",
+            "generator": "Visual Studio 17 2022",
+            "architecture": "x64",
+            "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Windows"
+            }
+        }
+    ],
+
+    "buildPresets": [
+        { "name": "linux-gcc",    "configurePreset": "linux-gcc",    "configuration": "Release" },
+        { "name": "linux-clang",  "configurePreset": "linux-clang",  "configuration": "Release" },
+        { "name": "windows-msvc", "configurePreset": "windows-msvc", "configuration": "Release" }
+    ],
+
+    "testPresets": [
+        {
+            "name": "linux-gcc",
+            "configurePreset": "linux-gcc",
+            "output": { "outputOnFailure": true }
+        },
+        {
+            "name": "linux-clang",
+            "configurePreset": "linux-clang",
+            "output": { "outputOnFailure": true }
+        },
+        {
+            "name": "windows-msvc",
+            "configurePreset": "windows-msvc",
+            "configuration": "Release",
+            "output": { "outputOnFailure": true }
+        }
+    ]
+}

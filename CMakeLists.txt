@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.21)  # for CMakePresets.json v3 (testPresets)
 
 project(survival
     VERSION 0.1.0
