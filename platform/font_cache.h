@@ -15,18 +15,21 @@
 // it. Good enough for the handful of strings per frame the game draws;
 // can be cached if Phase 2 testing shows it costing real frame time.
 
-namespace platform {
+namespace platform
+{
 
-enum FontId { FONT_SYS = 0, FONT_UI = 1 };
+enum FontId
+{
+	FONT_SYS = 0,
+	FONT_UI = 1
+};
 
 HRESULT fonts_init();
-void    fonts_shutdown();
+void fonts_shutdown();
 
-void draw_text(SDL_Renderer* renderer, FontId font,
-               const char* text,
-               int x, int y,
-               Uint8 r, Uint8 g, Uint8 b, Uint8 a = 255);
+void draw_text(SDL_Renderer* renderer, FontId font, const char* text, int x, int y, Uint8 r,
+               Uint8 g, Uint8 b, Uint8 a = 255);
 
-}  // namespace platform
+} // namespace platform
 
-#endif  // PLATFORM_FONT_CACHE_H
+#endif // PLATFORM_FONT_CACHE_H

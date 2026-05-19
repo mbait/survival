@@ -7,17 +7,16 @@
 
 struct GAMEOBJECT
 {
-	SPRITE		*sprite;
-	RIGIDBODY	*body;
-	
-	DWORD  TimeToLive;
-	BYTE   AlphaColor;
+	SPRITE* sprite;
+	RIGIDBODY* body;
 
-	GAMEOBJECT *prev;
-	GAMEOBJECT *next;
-	
-	void Add(SPRITE *sprite, RIGIDBODY *body, 
-		DWORD TimeToLive, BYTE AlphaColor);
+	DWORD TimeToLive;
+	BYTE AlphaColor;
+
+	GAMEOBJECT* prev;
+	GAMEOBJECT* next;
+
+	void Add(SPRITE* sprite, RIGIDBODY* body, DWORD TimeToLive, BYTE AlphaColor);
 	void Delete();
 };
 

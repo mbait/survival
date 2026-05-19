@@ -17,6 +17,6 @@ void GetAIActions(int index, bool* actions);
 
 // qsort comparator for player scoreboard sort: lower death count wins,
 // ties broken by higher frag count.
-int  ScoreCmp(const void* arg_1, const void* arg_2);
+int ScoreCmp(const void* arg_1, const void* arg_2);
 
-#endif  // GAME_AI_H
+#endif // GAME_AI_H

@@ -21,28 +21,31 @@ typedef struct RIGIDBODY
 
 	//~RIGIDBODY();
 
-	void ApplyForce(VECTOR2D const &F);
+	void ApplyForce(VECTOR2D const& F);
 	void ApplyForce(float F);
 	void ApplyImpulse(float fImpulse, VECTOR2D N, VECTOR2D Pdd);
-	bool Collide(RIGIDBODY &body, VECTOR2D &MTD, float &t);
-	void Move(VECTOR2D const &D);
+	bool Collide(RIGIDBODY& body, VECTOR2D& MTD, float& t);
+	void Move(VECTOR2D const& D);
 	void Rotate(float fAngle);
-	void ResolveCollision(RIGIDBODY &body, VECTOR2D N, float t);
-	bool IsStatic() const {return fMass == 0.0f;}
+	void ResolveCollision(RIGIDBODY& body, VECTOR2D N, float t);
+	bool IsStatic() const
+	{
+		return fMass == 0.0f;
+	}
 	void Update(float dt);
 
 	float fMass;
 	float fInertia;
 
-    VECTOR2D Pos;
+	VECTOR2D Pos;
 	float fOrientation;
-	
+
 	VECTOR2D Velocity;
-	float   fAngVelocity;
+	float fAngVelocity;
 
 	VECTOR2D Force;
 	float fTorque;
-	
+
 	float fRestitution;
 	float fFriction;
 
@@ -54,33 +57,32 @@ typedef struct RIGIDBODY
 	// is always equal to lpVertices.size().
 	std::vector<VECTOR2D> lpVertices;
 	int iNumVertices;
-}*LPRIGIDBODY;	
+}* LPRIGIDBODY;
 
 typedef struct JOINT
 {
 	LPRIGIDBODY aBodies[2];
 	VECTOR2D aPoints[2];
-	
-	JOINT();
-	JOINT(LPRIGIDBODY body0, LPRIGIDBODY body1, 
-		  VECTOR2D point0, VECTOR2D point1);
-	void CalcForce();
-}*LPJOINT;
 
-bool RayIntersect(RIGIDBODY &body, VECTOR2D raystart, VECTOR2D rayend, float &t, VECTOR2D &Nt);
-bool CircleIntersect(RIGIDBODY &body, VECTOR2D center, float fRadius, float &t, VECTOR2D &Nt);
+	JOINT();
+	JOINT(LPRIGIDBODY body0, LPRIGIDBODY body1, VECTOR2D point0, VECTOR2D point1);
+	void CalcForce();
+}* LPJOINT;
+
+bool RayIntersect(RIGIDBODY& body, VECTOR2D raystart, VECTOR2D rayend, float& t, VECTOR2D& Nt);
+bool CircleIntersect(RIGIDBODY& body, VECTOR2D center, float fRadius, float& t, VECTOR2D& Nt);
 
 /*typedef struct TERRAIN
 {
-	TERRAIN() : CoR(0.7f), CoF(0.5f), lpVertices(0)
-	{
-	}
-	
-	int iNumVertices;
-	LPVECTOR2D lpVertices;
+    TERRAIN() : CoR(0.7f), CoF(0.5f), lpVertices(0)
+    {
+    }
 
-	float CoR;
-	float CoF;
+    int iNumVertices;
+    LPVECTOR2D lpVertices;
+
+    float CoR;
+    float CoF;
 }*LPTERRAIN;*/
 
 ////////////////////////////////////FUNCTIONS////////////////////////////////////////////

@@ -13,49 +13,48 @@
 
 #ifdef _WIN32
 
-  #ifndef WIN32_LEAN_AND_MEAN
-  #define WIN32_LEAN_AND_MEAN
-  #endif
-  #include <windows.h>
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <windows.h>
 
-  // <windows.h> with WIN32_LEAN_AND_MEAN does not pull in <rpcndr.h>,
-  // so the lowercase `byte` typedef the legacy code uses isn't defined.
-  // Add it explicitly. Safe even when <rpcndr.h> is later included
-  // because both definitions are `unsigned char`.
-  using byte = unsigned char;
+// <windows.h> with WIN32_LEAN_AND_MEAN does not pull in <rpcndr.h>,
+// so the lowercase `byte` typedef the legacy code uses isn't defined.
+// Add it explicitly. Safe even when <rpcndr.h> is later included
+// because both definitions are `unsigned char`.
+using byte = unsigned char;
 
-#else  // !_WIN32
+#else // !_WIN32
 
-  #include <chrono>
-  #include <cstdint>
-  #include <limits>
+#include <chrono>
+#include <cstdint>
+#include <limits>
 
-  using BYTE     = std::uint8_t;
-  using byte     = std::uint8_t;
-  using WORD     = std::uint16_t;
-  using DWORD    = std::uint32_t;
-  using LPSTR    = char*;
-  using LPCSTR   = const char*;
-  using LPVOID   = void*;
-  using HRESULT  = int;
+using BYTE = std::uint8_t;
+using byte = std::uint8_t;
+using WORD = std::uint16_t;
+using DWORD = std::uint32_t;
+using LPSTR = char*;
+using LPCSTR = const char*;
+using LPVOID = void*;
+using HRESULT = int;
 
-  constexpr HRESULT S_OK   = 0;
-  constexpr HRESULT E_FAIL = -1;
+constexpr HRESULT S_OK = 0;
+constexpr HRESULT E_FAIL = -1;
 
-  #define SUCCEEDED(hr) ((hr) >= 0)
-  #define FAILED(hr)    ((hr) <  0)
+#define SUCCEEDED(hr) ((hr) >= 0)
+#define FAILED(hr) ((hr) < 0)
 
-  // Millisecond tick count, matching Win32 GetTickCount() semantics
-  // (monotonic, wraps at 2^32 ms ~= 49 days — same as the original).
-  // Uses std::chrono::steady_clock so the shim layer has no SDL
-  // dependency.
-  inline DWORD GetTickCount()
-  {
-      using namespace std::chrono;
-      return static_cast<DWORD>(
-          duration_cast<milliseconds>(
-              steady_clock::now().time_since_epoch()).count());
-  }
+// Millisecond tick count, matching Win32 GetTickCount() semantics
+// (monotonic, wraps at 2^32 ms ~= 49 days — same as the original).
+// Uses std::chrono::steady_clock so the shim layer has no SDL
+// dependency.
+inline DWORD GetTickCount()
+{
+	using namespace std::chrono;
+	return static_cast<DWORD>(
+	    duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count());
+}
 
 #endif // !_WIN32
 
@@ -73,10 +72,10 @@
 // at line 78 expands to invalid syntax. On other platforms there's no
 // such symbol, so a macro to +infinity is the cleanest substitute.
 #ifdef _WIN32
-  #include <cfloat>  // gives us _HUGE as `extern double const`
+#include <cfloat> // gives us _HUGE as `extern double const`
 #else
-  #include <limits>
-  #define _HUGE (std::numeric_limits<double>::infinity())
+#include <limits>
+#define _HUGE (std::numeric_limits<double>::infinity())
 #endif
 
 #endif // WIN32_COMPAT_H

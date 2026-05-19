@@ -21,4 +21,4 @@ void AddFireParticles(VECTOR2D vPoint);
 void AddSmokeParticles(VECTOR2D vPoint);
 void AddCustomParticles(VECTOR2D vPoint, VECTOR2D vNormal, COLOR color);
 
-#endif  // GAME_EFFECTS_H
+#endif // GAME_EFFECTS_H

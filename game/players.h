@@ -7,7 +7,7 @@
 // method declarations live in gamecode.h (alongside the extern arrays
 // m_aPlayers / m_aFrags / m_aDeath / g_iNumPlayers).
 HRESULT AddPlayer();
-void    RespawnPlayer(PLAYER* player);
+void RespawnPlayer(PLAYER* player);
 
 // Authored animations referenced by AddPlayer + PLAYER::Update.
 extern ANIMATION animations[static_cast<int>(ANIMATION_TYPE::NUMANIMATIONS)];
@@ -15,4 +15,4 @@ extern ANIMATION animations[static_cast<int>(ANIMATION_TYPE::NUMANIMATIONS)];
 // Per-part ragdoll mesh paths.
 extern const char* szMeshFile[];
 
-#endif  // GAME_PLAYERS_H
+#endif // GAME_PLAYERS_H

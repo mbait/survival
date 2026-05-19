@@ -15,18 +15,15 @@
 //   - a UTF-8 BOM at the start of the file is tolerated.
 //
 // We deliberately keep the API tiny — the game reads exactly six keys.
-namespace platform {
+namespace platform
+{
 
-std::string ini_get_string(const std::filesystem::path& file,
-                           std::string_view section,
-                           std::string_view key,
-                           std::string_view fallback);
+std::string ini_get_string(const std::filesystem::path& file, std::string_view section,
+                           std::string_view key, std::string_view fallback);
 
-int ini_get_int(const std::filesystem::path& file,
-                std::string_view section,
-                std::string_view key,
+int ini_get_int(const std::filesystem::path& file, std::string_view section, std::string_view key,
                 int fallback);
 
-}  // namespace platform
+} // namespace platform
 
-#endif  // PLATFORM_READ_INI_H
+#endif // PLATFORM_READ_INI_H
