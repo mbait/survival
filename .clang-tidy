@@ -15,11 +15,13 @@ Checks: >
   -bugprone-easily-swappable-parameters,
   -bugprone-narrowing-conversions,
   -bugprone-implicit-widening-of-multiplication-result,
+  -bugprone-assignment-in-if-condition,
   clang-analyzer-*,
   modernize-*,
   -modernize-use-trailing-return-type,
   -modernize-use-nodiscard,
   -modernize-use-auto,
+  -modernize-avoid-c-arrays,
   performance-*,
   readability-*,
   -readability-identifier-length,
@@ -31,6 +33,7 @@ Checks: >
   -readability-implicit-bool-conversion,
   -readability-braces-around-statements,
   -readability-else-after-return,
+  -readability-non-const-parameter,
 
 # Headers we own are linted; bundled / vendored ones (build/_deps/) are not.
 HeaderFilterRegex: '^(?!.*/build/.*).*\.h$'
@@ -38,5 +41,7 @@ HeaderFilterRegex: '^(?!.*/build/.*).*\.h$'
 # Use the project's clang-format style for any auto-fix output.
 FormatStyle: file
 
-# Don't escalate to errors yet — the very first run is for triage.
-WarningsAsErrors: ''
+# Every warning under the enabled set above is a CI failure now that
+# triage is done; the three deferred categories are explicitly turned
+# off in Checks: instead of suppressed with WarningsAsErrors.
+WarningsAsErrors: '*'

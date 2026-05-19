@@ -14,22 +14,29 @@ jobs:
   # -----------------------------------------------------------------
   # Single static-analysis gate that all build jobs depend on. Runs
   # once per push regardless of how many compilers are in the build
-  # matrix.
+  # matrix: clang-format + clang-tidy on Ubuntu.
   # -----------------------------------------------------------------
   check:
-    name: format
+    name: lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install clang-format
+      - name: Install LLVM + SDL2 + Catch2
         run: |
           sudo apt-get update
-          sudo apt-get install -y clang-format-18
+          sudo apt-get install -y \
+              clang-format-18 clang-tidy-18 \
+              libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev libsdl2-gfx-dev \
+              catch2 ninja-build
           sudo update-alternatives --install /usr/bin/clang-format clang-format \
               /usr/bin/clang-format-18 100
+          sudo update-alternatives --install /usr/bin/clang-tidy clang-tidy \
+              /usr/bin/clang-tidy-18 100
+          sudo update-alternatives --install /usr/bin/run-clang-tidy run-clang-tidy \
+              /usr/bin/run-clang-tidy-18 100
 
-      - name: Verify formatting
+      - name: clang-format --dry-run --Werror
         run: |
           mapfile -t FILES < <(find . -type f \( -name '*.cpp' -o -name '*.h' \) \
               -not -path './build/*' -not -path './.git/*' \
@@ -38,6 +45,18 @@ jobs:
               -not -path './builds/*')
           clang-format --version
           clang-format --dry-run --Werror "${FILES[@]}"
+
+      - name: CMake configure (for compile_commands.json)
+        run: cmake --preset linux-gcc
+
+      - name: clang-tidy on all TUs
+        run: |
+          clang-tidy --version
+          mapfile -t FILES < <(find . -type f -name '*.cpp' \
+              -not -path './build/*' -not -path './tests/*')
+          # WarningsAsErrors='*' in .clang-tidy means any diagnostic
+          # under the enabled check set is a non-zero exit code.
+          run-clang-tidy -p build/linux-gcc -quiet "${FILES[@]}"
 
   build:
     name: ${{ matrix.preset }}
