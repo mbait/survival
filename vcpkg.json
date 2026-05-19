@@ -1,0 +1,12 @@
+{
+    "name": "survival",
+    "version": "0.1.0",
+    "description": "2006 2D shooter, ported from Win32/DirectX 9 to SDL2",
+    "dependencies": [
+        "sdl2",
+        "sdl2-image",
+        "sdl2-ttf",
+        "sdl2-gfx",
+        "catch2"
+    ]
+}

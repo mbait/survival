@@ -1,8 +1,6 @@
 #ifndef GAMECODE_H
 #define GAMECODE_H
 
-#define INITGUID
-
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -14,16 +12,6 @@
 #include "graphics/particles.h"
 #include "main.h"
 
-// Linker dependencies are handled by CMake on Linux; the #pragma comment
-// directives are MSVC-only and silently ignored elsewhere. Kept gated so
-// a future Windows MSVC build still picks them up.
-#ifdef _MSC_VER
-#pragma comment(lib, "d3d9.lib")
-#pragma comment(lib, "d3dx9.lib")
-#endif
-
-#define D3DFVF_TEXTUREVERTEX (D3DFVF_XYZRHW|D3DFVF_TEX1)
-#define D3DFVF_COLORVERTEX   (D3DFVF_XYZRHW|D3DFVF_DIFFUSE)
 #define PI D3DX_PI
 //#define MIN_VELX 60.5f
 //#define MIN_VELY 60.5f
@@ -60,7 +48,6 @@
 #define MOUSE_MAX_Y  100
 ////////////////////////
 
-#define BUFFERSIZE		10000
 #define MAX_PARTICLES	20000
 
 //enviroment options////////////////
@@ -99,32 +86,6 @@ enum class COLLISION { NONE, VERT, HORZ };
 enum class MATERIAL_TYPE { BRICKS, METAL, PLASTIC, WOOD, NUM_MATERIALS };
 enum class PACK_TYPE { PACK_AMMO, PACK_GRENADE, PACK_HEALTH, NUM_PACKS };
 enum class AI_STATE_TYPE { ATTACK, RUNAWAY, PURSUIT, SEARCH_PACK, HELP };
-
-//screen initialization struct
-/*struct SCREENSETTINGS
-{
-	HWND hwndParent;
-	HINSTANCE hInstance;
-
-	int iWidth;
-	int iHeight;
-	
-	bool bWindowed;
-
-	DWORD dwAAFlag;
-};
-*/
-//D3D structures
-struct COLORVERTEX
-{
-	float x, y, z, rhw;
-	DWORD color;
-};
-struct TEXTUREVERTEX
-{
-	float x, y, z, rhw;
-	float u, v;
-};
 
 //game structures
 struct TIMER

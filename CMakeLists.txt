@@ -79,6 +79,14 @@ target_link_libraries(game PRIVATE
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     target_compile_options(game PRIVATE -Wall -Wextra -Wno-unused-parameter)
+elseif(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+    # /W4 — full warnings;  /permissive- — strict standards conformance;
+    # /Zc:__cplusplus — so __cplusplus reports 202002 under /std:c++20;
+    # /D_CRT_SECURE_NO_WARNINGS — silence MSVC's "use the _s variants"
+    #   nags for the few remaining fopen/sprintf-style calls (the audit
+    #   has those slated for std::ifstream / std::format follow-ups).
+    target_compile_options(game PRIVATE
+        /W4 /permissive- /Zc:__cplusplus /D_CRT_SECURE_NO_WARNINGS)
 endif()
 
 # ---------------------------------------------------------------------------
@@ -126,6 +134,9 @@ if(BUILD_TESTING)
 
     if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
         target_compile_options(survival_tests PRIVATE -Wall -Wextra -Wno-unused-parameter)
+    elseif(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+        target_compile_options(survival_tests PRIVATE
+            /W4 /permissive- /Zc:__cplusplus /D_CRT_SECURE_NO_WARNINGS)
     endif()
 
     include(Catch)
