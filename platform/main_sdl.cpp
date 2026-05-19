@@ -126,8 +126,9 @@ int main(int /*argc*/, char* argv[])
     {
         const std::filesystem::path map_path =
             std::filesystem::path("data/maps") / g_szMapName;
-        if (FAILED(LoadMap(map_path.c_str()))) {
-            std::fprintf(stderr, "LoadMap failed: %s\n", map_path.c_str());
+        const std::string map_path_str = map_path.string();
+        if (FAILED(LoadMap(map_path_str.c_str()))) {
+            std::fprintf(stderr, "LoadMap failed: %s\n", map_path_str.c_str());
             Cleanup();
             SDL_DestroyRenderer(renderer);
             SDL_DestroyWindow(window);

@@ -18,6 +18,12 @@
   #endif
   #include <windows.h>
 
+  // <windows.h> with WIN32_LEAN_AND_MEAN does not pull in <rpcndr.h>,
+  // so the lowercase `byte` typedef the legacy code uses isn't defined.
+  // Add it explicitly. Safe even when <rpcndr.h> is later included
+  // because both definitions are `unsigned char`.
+  using byte = unsigned char;
+
 #else  // !_WIN32
 
   #include <chrono>
