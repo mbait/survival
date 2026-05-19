@@ -21,8 +21,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # We need history back to the previous tip / PR base so the
+          # ci-lint-scope.sh diff can see which files changed.
+          fetch-depth: 0
+
+      - name: Determine lint scope
+        id: scope
+        env:
+          PR_BASE_SHA:  ${{ github.event.pull_request.base.sha }}
+          EVENT_BEFORE: ${{ github.event.before }}
+        run: bash scripts/ci-lint-scope.sh
 
       - name: Install LLVM + SDL2 + Catch2
+        if: steps.scope.outputs.mode != 'none'
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -37,25 +49,58 @@ jobs:
               /usr/bin/run-clang-tidy-18 100
 
       - name: clang-format --dry-run --Werror
+        if: steps.scope.outputs.mode != 'none'
+        env:
+          MODE:          ${{ steps.scope.outputs.mode }}
+          CHANGED_FILES: ${{ steps.scope.outputs.changed_files }}
         run: |
-          mapfile -t FILES < <(find . -type f \( -name '*.cpp' -o -name '*.h' \) \
-              -not -path './build/*' -not -path './.git/*' \
-              -not -path './d3dg*/*' -not -path './a/*' \
-              -not -path './Debug/*' -not -path './Release/*' \
-              -not -path './builds/*')
+          if [ "$MODE" = "all" ]; then
+              mapfile -t FILES < <(find . -type f \( -name '*.cpp' -o -name '*.h' \) \
+                  -not -path './build/*' -not -path './.git/*' \
+                  -not -path './d3dg*/*' -not -path './a/*' \
+                  -not -path './Debug/*' -not -path './Release/*' \
+                  -not -path './builds/*')
+          else
+              read -ra FILES <<< "$CHANGED_FILES"
+          fi
           clang-format --version
+          printf 'checking %d file(s):\n' "${#FILES[@]}"
+          printf '  %s\n' "${FILES[@]}"
           clang-format --dry-run --Werror "${FILES[@]}"
 
       - name: CMake configure (for compile_commands.json)
+        if: steps.scope.outputs.mode != 'none'
         run: cmake --preset linux-gcc
 
-      - name: clang-tidy on all TUs
+      - name: clang-tidy
+        if: steps.scope.outputs.mode != 'none'
+        env:
+          MODE:               ${{ steps.scope.outputs.mode }}
+          CPP_FILES:          ${{ steps.scope.outputs.cpp_files }}
+          ANY_HEADER_CHANGED: ${{ steps.scope.outputs.any_header_changed }}
         run: |
-          clang-tidy --version
-          mapfile -t FILES < <(find . -type f -name '*.cpp' \
-              -not -path './build/*' -not -path './tests/*')
           # WarningsAsErrors='*' in .clang-tidy means any diagnostic
           # under the enabled check set is a non-zero exit code.
+          if [ "$MODE" = "all" ] || [ "$ANY_HEADER_CHANGED" = "true" ]; then
+              # A header change could affect every TU that includes it;
+              # we can't statically know which, so lint every .cpp.
+              mapfile -t FILES < <(find . -type f -name '*.cpp' \
+                  -not -path './build/*' -not -path './tests/*')
+          else
+              read -ra ALL_CPP <<< "$CPP_FILES"
+              FILES=()
+              for f in "${ALL_CPP[@]}"; do
+                  [[ "$f" == tests/* || "$f" == build/* ]] && continue
+                  FILES+=("$f")
+              done
+              if [ "${#FILES[@]}" -eq 0 ]; then
+                  echo "all changed .cpp files are tests/ — skipping clang-tidy"
+                  exit 0
+              fi
+          fi
+          clang-tidy --version
+          printf 'linting %d TU(s):\n' "${#FILES[@]}"
+          printf '  %s\n' "${FILES[@]}"
           run-clang-tidy -p build/linux-gcc -quiet "${FILES[@]}"
 
   build:
