@@ -143,8 +143,8 @@ public:
 	HRESULT Draw(const Affine2D& parent, BYTE Alpha = 0xFF);
 
 	// Fully-specified draw — overrides the internal state.
-	HRESULT Draw(float fX, float fY, float fRotation, float fRotationX, float fRotationY,
-	             float fScale = 1.0f, BYTE Alpha = 0xFF);
+	HRESULT Draw(float fX, float fY, float fRotation, float fRX, float fRY, float fScale = 1.0f,
+	             BYTE Alpha = 0xFF);
 
 	// The SPRITE's current local-to-parent transform (used as input to
 	// the matrix overload of Draw, or to walk a hierarchy in model.cpp).

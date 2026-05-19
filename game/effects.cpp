@@ -20,7 +20,7 @@ void AddFireParticles(VECTOR2D vPoint)
 	for (int i = 0; i < FIRE_NUMPARTICLES && g_FireParticleCnt < MAX_PARTICLES; i++)
 	{
 		const float Mul = 30 * RANDOM + 100;
-		const float fTheta = 2 * PI * RANDOM;
+		const float fTheta = 2 * std::numbers::pi_v<float> * RANDOM;
 		const float fRadius = Mul * RANDOM;
 
 		p.Pos = vPoint;
@@ -44,7 +44,7 @@ void AddSmokeParticles(VECTOR2D /*vPoint*/)
 
 void AddCustomParticles(VECTOR2D vPoint, VECTOR2D vNormal, COLOR color)
 {
-	const float fTheta = atan2(vNormal.y, vNormal.x) + PI / 2.0f;
+	const float fTheta = atan2(vNormal.y, vNormal.x) + std::numbers::pi_v<float> / 2.0f;
 
 	// Offset spawn slightly along the surface normal so static-wall
 	// particles don't get re-absorbed by gravity before they're visible.
@@ -57,7 +57,7 @@ void AddCustomParticles(VECTOR2D vPoint, VECTOR2D vNormal, COLOR color)
 	{
 		const float fVel = CONCRETEPARTICLE_VEL * RANDOM;
 		p.Pos = vSpawn;
-		p.Velocity = VECTOR2D(fTheta - PI * RANDOM) * fVel;
+		p.Velocity = VECTOR2D(fTheta - std::numbers::pi_v<float> * RANDOM) * fVel;
 		p.Acceleration = VECTOR2D(0, 0);
 		p.color_start = color;
 		p.color_end = COLOR();

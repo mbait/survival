@@ -43,7 +43,7 @@ HRESULT PLAYER::Init(SDL_Renderer* pRenderer, const char* szModelFileName,
 	bJumpKeyOnce = true;
 	bWJumpKeyOnce = true;
 
-	pViewObject = 0;
+	pViewObject = nullptr;
 
 	HRESULT hr;
 
@@ -276,14 +276,14 @@ void PLAYER::Update(DWORD dwTime, bool* actions)
 	{
 		m_aDeath[ID]++;
 
-		for (int i = 0; i < NUM_PARTS; i++)
+		for (auto& i : ragdoll)
 		{
-			ragdoll[i].Move(body.Pos - ragdoll[i].Pos);
-			ragdoll[i].Rotate(-ragdoll[i].fOrientation);
+			i.Move(body.Pos - i.Pos);
+			i.Rotate(-i.fOrientation);
 
-			float fTheta = PI * (2.0f * RANDOM - 1.0f);
-			ragdoll[i].Velocity = VECTOR2D(fTheta) * (RANDOM * 500 - 250);
-			ragdoll[i].fAngVelocity = RANDOM * 100 - 50;
+			float fTheta = std::numbers::pi_v<float> * (2.0f * RANDOM - 1.0f);
+			i.Velocity = VECTOR2D(fTheta) * (RANDOM * 500 - 250);
+			i.fAngVelocity = RANDOM * 100 - 50;
 		}
 
 		health = 0;
@@ -299,26 +299,26 @@ void PLAYER::Update(DWORD dwTime, bool* actions)
 			return;
 		}
 
-		for (int i = 0; i < NUM_PARTS; i++)
+		for (auto& i : ragdoll)
 		{
 			/*for(int j=0; j<10; j++)
 			    joints[j].CalcForce();
 			*/
 
 			for (int j = 0; j < g_iNumBodies; j++)
-				if (ragdoll[i].Collide(aBodies[j], MTD, t))
+				if (i.Collide(aBodies[j], MTD, t))
 				{
-					ragdoll[i].ResolveCollision(aBodies[j], MTD, t);
+					i.ResolveCollision(aBodies[j], MTD, t);
 				}
 
 			for (int j = 0; j < g_iNumWalls; j++)
-				if (ragdoll[i].Collide(aWalls[j], MTD, t))
+				if (i.Collide(aWalls[j], MTD, t))
 				{
-					ragdoll[i].ResolveCollision(aWalls[j], MTD, t);
+					i.ResolveCollision(aWalls[j], MTD, t);
 				}
 
-			ragdoll[i].ApplyForce(VECTOR2D(0.0f, g * ragdoll[i].fMass));
-			ragdoll[i].Update(dwTime / 1000.0f);
+			i.ApplyForce(VECTOR2D(0.0f, g * i.fMass));
+			i.Update(dwTime / 1000.0f);
 		}
 
 		tmDeath.Update();
@@ -535,7 +535,7 @@ void PLAYER::Update(DWORD dwTime, bool* actions)
 				vsign = 1.0f;
 			else
 				vsign = -1.0f;
-			Rotate(&vJump, 0, PI / 4 * vsign);
+			Rotate(&vJump, nullptr, std::numbers::pi_v<float> / 4 * vsign);
 			if (!DotProduct(Axis, VECTOR2D(1.0f, 0.0f)))
 			{
 				float fSign = 1 - 2 * model.GetOrientation();
@@ -633,7 +633,7 @@ void PLAYER::Update(DWORD dwTime, bool* actions)
 
 	// Orient cursor in space
 	VECTOR2D cursor_vec(100.0f, 15.0f * o);
-	Rotate(&cursor_vec, 0, fTheta);
+	Rotate(&cursor_vec, nullptr, fTheta);
 
 	// calc ray
 	VECTOR2D RayStart = body.Pos;
@@ -683,7 +683,7 @@ void PLAYER::Update(DWORD dwTime, bool* actions)
 	{
 		mint = g_iScreenWidth * g_iScreenWidth + g_iScreenHeight * g_iScreenHeight;
 
-		pViewObject = 0;
+		pViewObject = nullptr;
 	}
 
 	cursor = cursor_vec * mint;
@@ -692,7 +692,8 @@ void PLAYER::Update(DWORD dwTime, bool* actions)
 	// 0.2f = atan2(100, 20) :-), precalculations rulezz!!!
 	// cur_ptr.SetRotation(fTheta-0.2f*o);
 
-	model.GetPart(BODY)->SetRotation(o * fTheta + PI * model.GetOrientation());
+	model.GetPart(BODY)->SetRotation(o * fTheta +
+	                                 std::numbers::pi_v<float> * model.GetOrientation());
 	// resolve mouse state: shooting and etc.
 	if (actions[static_cast<int>(ACTION::SHOOT)] && tmShoot.Delta() > 50 &&
 	    ammo[static_cast<int>(WEAPON::RIFLE)] > 0)
@@ -888,9 +889,9 @@ void RespawnPlayer(PLAYER* player)
 	player->body.Move(-player->body.Pos + aRespawns[index]);
 	player->body.Rotate(-player->body.fOrientation);
 
-	player->ammo[static_cast<int>(WEAPON::RIFLE)] = player->c_NumRifleAmmo;
+	player->ammo[static_cast<int>(WEAPON::RIFLE)] = PLAYER::c_NumRifleAmmo;
 	player->ammo[static_cast<int>(WEAPON::GRENADE)] = 2;
-	player->health = player->c_NumHealth;
+	player->health = PLAYER::c_NumHealth;
 
 	/*player->ammo[static_cast<int>(WEAPON::RIFLE)] = 0;
 	player->ammo[static_cast<int>(WEAPON::GRENADE)] = 0;

@@ -125,10 +125,7 @@ HRESULT UpdateScene(DWORD dwTime)
 	else
 		g_bRemoveKeyOnce = true;
 
-	if (keystate[SDL_SCANCODE_TAB])
-		g_bShowStat = true;
-	else
-		g_bShowStat = false;
+	g_bShowStat = keystate[SDL_SCANCODE_TAB] != 0;
 
 	//=========================read mouse state=========================//
 	// Relative-mouse mode is enabled by the platform layer at start-up;
@@ -307,7 +304,7 @@ HRESULT LoadGameData()
 		return hr;
 	}
 	rifle.SetXYPos(15, 25);
-	rifle.SetRotation(PI / 4.0f);
+	rifle.SetRotation(std::numbers::pi_v<float> / 4.0f);
 
 	hr = grenade.Init(g_renderer, "data/sprites/grenade.tga");
 	if (FAILED(hr))
@@ -386,12 +383,12 @@ HRESULT InitGfx(SDL_Window* window, SDL_Renderer* renderer)
 }
 void Cleanup()
 {
-	for (int i = 0; i < MAX_MATERIALS; i++)
+	for (auto& g_aMaterial : g_aMaterials)
 	{
-		if (g_aMaterials[i].pTexture)
+		if (g_aMaterial.pTexture)
 		{
-			SDL_DestroyTexture(g_aMaterials[i].pTexture);
-			g_aMaterials[i].pTexture = nullptr;
+			SDL_DestroyTexture(g_aMaterial.pTexture);
+			g_aMaterial.pTexture = nullptr;
 		}
 	}
 	if (g_pFireTexture)

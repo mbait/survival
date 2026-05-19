@@ -1,11 +1,13 @@
 
 #include "physics2D.h"
 
+#include <cmath>
+
 #include "compat/win32_compat.h"
 
 #include "polygon.h"
 
-void swap(float& a, float& b)
+void swap(float& a, float& b) noexcept
 {
 	float tmp = a;
 	a = b;
@@ -102,7 +104,7 @@ void RIGIDBODY::Update(float dt)
 	Velocity += Force * dt / fMass;
 	fAngVelocity += fTorque * dt / fInertia;
 
-	if (fabs(fAngVelocity) < MIN_V)
+	if (std::fabs(fAngVelocity) < MIN_V)
 		fAngVelocity = 0.0f;
 
 	// Release forces
@@ -692,8 +694,8 @@ void RIGIDBODY::Rotate(float fAngle)
 
 JOINT::JOINT()
 {
-	aBodies[0] = 0;
-	aBodies[1] = 0;
+	aBodies[0] = nullptr;
+	aBodies[1] = nullptr;
 	aPoints[0] = VECTOR2D();
 	aPoints[1] = VECTOR2D();
 }
@@ -721,8 +723,8 @@ void JOINT::CalcForce()
 
 	VECTOR2D P0 = aPoints[0];
 	VECTOR2D P1 = aPoints[1];
-	Rotate(&P0, 0, aBodies[0]->fOrientation);
-	Rotate(&P1, 0, aBodies[1]->fOrientation);
+	Rotate(&P0, nullptr, aBodies[0]->fOrientation);
+	Rotate(&P1, nullptr, aBodies[1]->fOrientation);
 
 	VECTOR2D V0 = aBodies[0]->Velocity + Perp(P0) * aBodies[0]->fAngVelocity;
 	VECTOR2D V1 = aBodies[1]->Velocity + Perp(P1) * aBodies[1]->fAngVelocity;

@@ -62,8 +62,8 @@ void render_particle(SDL_Renderer* renderer, SDL_Texture* tex, const PARTICLE* p
 	SDL_SetTextureBlendMode(tex, blend);
 	SDL_SetTextureColorMod(tex, p->color_current.R, p->color_current.G, p->color_current.B);
 	SDL_SetTextureAlphaMod(tex, p->color_current.Alpha);
-	SDL_Rect dst {static_cast<int>(p->Pos.x - vOffset.x - size / 2),
-	              static_cast<int>(p->Pos.y - vOffset.y - size / 2), size, size};
+	SDL_Rect dst {static_cast<int>(p->Pos.x - vOffset.x - size / 2.0f),
+	              static_cast<int>(p->Pos.y - vOffset.y - size / 2.0f), size, size};
 	SDL_RenderCopy(renderer, tex, nullptr, &dst);
 }
 

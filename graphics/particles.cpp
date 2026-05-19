@@ -42,8 +42,5 @@ bool PARTICLE::Update(DWORD dwTime, VECTOR2D vGravity)
 
 	color_current.B += (int)(color_end.B - color_start.B) * ((float)counter / (float)TTL);
 
-	if (counter > TTL)
-		return false;
-	else
-		return true;
+	return counter <= TTL;
 }

@@ -15,7 +15,7 @@ MODEL::MODEL()
 	fScale = 1.0f;
 	iOrientation = 0;
 
-	frames = 0;
+	frames = nullptr;
 	iNumFrames = 0;
 	std::memset(&animation, 0, sizeof(animation));
 	bAnimationActive = false;
@@ -27,10 +27,8 @@ MODEL::MODEL()
 
 MODEL::~MODEL()
 {
-	if (frames)
-	{
-		delete[] frames;
-	}
+
+	delete[] frames;
 }
 
 HRESULT MODEL::LoadFromFile(SDL_Renderer* renderer, const char* szFileName)
@@ -55,7 +53,7 @@ HRESULT MODEL::LoadFromFile(SDL_Renderer* renderer, const char* szFileName)
 	};
 
 	// Load textures — each part has its texture bytes inline in the .m2d.
-	for (int i = 0; i < NUM_PARTS; i++)
+	for (auto& aPart : aParts)
 	{
 		int blocksize = 0;
 		if (!read_bytes(&blocksize, sizeof(int)) || blocksize == -1)
@@ -67,22 +65,22 @@ HRESULT MODEL::LoadFromFile(SDL_Renderer* renderer, const char* szFileName)
 		{
 			return E_FAIL;
 		}
-		if (FAILED(aParts[i].Init(renderer, rawbuf.data(), blocksize)))
+		if (FAILED(aPart.Init(renderer, rawbuf.data(), blocksize)))
 		{
 			return E_FAIL;
 		}
 	}
 
 	// Per-part offset + rotation pivot.
-	for (int i = 0; i < NUM_PARTS; i++)
+	for (auto& aPart : aParts)
 	{
 		float vals[4];
 		if (!read_bytes(vals, sizeof(vals)))
 		{
 			return E_FAIL;
 		}
-		aParts[i].SetXYPos(vals[0], vals[1]);
-		aParts[i].SetRotationXY(vals[2], vals[3]);
+		aPart.SetXYPos(vals[0], vals[1]);
+		aPart.SetRotationXY(vals[2], vals[3]);
 	}
 
 	// Animation key-frames.
@@ -188,7 +186,7 @@ HRESULT MODEL::Draw(SPRITE* pSprite, SPRITE* pFire, BYTE Alpha)
 			Affine2D matFire = matWeapon;
 			matFire = Affine2D::compose(matFire, Affine2D::translation(80.0f, 80.0f));
 			Affine2D rot;
-			rot.angle_rad = D3DX_PI / 4.0f;
+			rot.angle_rad = std::numbers::pi_v<float> / 4.0f;
 			matFire = Affine2D::compose(matFire, rot);
 			hr = pFire->Draw(matFire, Alpha);
 			if (FAILED(hr))
@@ -236,6 +234,9 @@ void MODEL::Tick(DWORD dwTime)
 	{
 		switch (animation.iType)
 		{
+		default:
+			// Unknown anim type: behave like SINGLE (stop animating).
+			[[fallthrough]];
 		case ANIMATION_SINGLE:
 			bAnimationActive = false;
 			break;
