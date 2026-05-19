@@ -4,6 +4,7 @@
 #include <SDL_image.h>
 
 #include <fstream>
+#include <numbers>
 #include <vector>
 
 #include "game/ai.h"

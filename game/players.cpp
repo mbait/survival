@@ -5,6 +5,7 @@
 #include <cmath>
 #include <cstdio>
 #include <fstream>
+#include <numbers>
 #include <vector>
 
 #include "game/ai.h"      // m_AIStates, RunToWayPoint, GetAIActions

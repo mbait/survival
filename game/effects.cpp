@@ -2,6 +2,7 @@
 
 #include <cmath>
 #include <cstdlib>
+#include <numbers>
 
 #include "gamecode.h" // FIRE_NUMPARTICLES, CONCRETE_NUMPARTICLES,
                       // MAX_PARTICLES, CONCRETEPARTICLE_VEL, PI, RANDOM
