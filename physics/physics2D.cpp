@@ -7,13 +7,6 @@
 
 #include "polygon.h"
 
-void swap(float& a, float& b) noexcept
-{
-	float tmp = a;
-	a = b;
-	b = tmp;
-}
-
 //////////////////////////////////IMPLEMENTATION/////////////////////////////////////////
 // Members of type VECTOR2D (Pos, Velocity, Force) are zero-initialised
 // implicitly by VECTOR2D's own default ctor before this body runs — the
