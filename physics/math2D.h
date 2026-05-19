@@ -1,10 +1,9 @@
-
 #if !defined(MATH2D_H)
 #define MATH2D_H
 
-#include <math.h>
+#include <cmath>
 
-const float Pi = 3.14159265358979323846;
+inline constexpr float Pi = 3.14159265358979323846f;
 
 /////////////////////////////////////STRUCTURES/////////////////////////////////////////
 typedef struct POINT2D
@@ -13,20 +12,26 @@ typedef struct POINT2D
 	POINT2D *next;
 }*LPPOINT2D;
 
-typedef struct VECTOR2D
+struct VECTOR2D
 {
-	float x, y;
+	float x = 0.0f;
+	float y = 0.0f;
 
-	VECTOR2D(void);
-	VECTOR2D(float x, float y);
-	VECTOR2D(float fTheta);
+	constexpr VECTOR2D() noexcept = default;
+	constexpr VECTOR2D(float x_, float y_) noexcept : x(x_), y(y_) {}
+	// Angle constructor — produces a unit vector at angle fTheta (radians).
+	// Not constexpr until C++26 makes sin/cos constexpr.
+	VECTOR2D(float fTheta) noexcept;
 
-	VECTOR2D operator-();
-	VECTOR2D &operator+=(VECTOR2D const &A);
-	VECTOR2D &operator-=(VECTOR2D const &A);
-	VECTOR2D &operator*=(float fM);
-	VECTOR2D &operator/=(float fD);
-}*LPVECTOR2D;
+	[[nodiscard]] constexpr VECTOR2D operator-() const noexcept { return {-x, -y}; }
+
+	constexpr VECTOR2D& operator+=(VECTOR2D const &A) noexcept { x += A.x; y += A.y; return *this; }
+	constexpr VECTOR2D& operator-=(VECTOR2D const &A) noexcept { x -= A.x; y -= A.y; return *this; }
+	constexpr VECTOR2D& operator*=(float fM)          noexcept { x *= fM;  y *= fM;  return *this; }
+	constexpr VECTOR2D& operator/=(float fD)          noexcept { x /= fD;  y /= fD;  return *this; }
+};
+using LPVECTOR2D = VECTOR2D*;
+using Vec2       = VECTOR2D;  // forward-looking alias; usage may migrate later
 
 class MATRIX
 {
@@ -45,138 +50,133 @@ public:
 		float e[2][2];
 	};
 
-	MATRIX(float _e11, float _e12, float _e21, float _e22)
-	: e11(_e11)
-	, e12(_e12)
-	, e21(_e21)
-	, e22(_e22)
-	{}
-	
-	MATRIX()
-	{}
+	constexpr MATRIX(float _e11, float _e12, float _e21, float _e22) noexcept
+	    : e11(_e11), e12(_e12), e21(_e21), e22(_e22) {}
 
-	MATRIX(float angle)
+	MATRIX() noexcept {}
+
+	MATRIX(float angle) noexcept
 	{
-		float c = cos(angle);
-		float s = sin(angle);
+		float c = std::cos(angle);
+		float s = std::sin(angle);
 
 		e11 = c; e12 = s;
 		e21 =-s; e22 = c;
 	}
 
-	float  operator()(int i, int j) const { return e[i][j]; }
-	float& operator()(int i, int j)       { return e[i][j]; }
+	[[nodiscard]] constexpr float  operator()(int i, int j) const noexcept { return e[i][j]; }
+	[[nodiscard]] constexpr float& operator()(int i, int j)       noexcept { return e[i][j]; }
 
-	
-	const VECTOR2D& operator[](int i) const
+
+	[[nodiscard]] const VECTOR2D& operator[](int i) const noexcept
 	{
 		return reinterpret_cast<const VECTOR2D&>(e[i][0]);
 	}
-	
-	VECTOR2D& operator[](int i)
+
+	[[nodiscard]] VECTOR2D& operator[](int i) noexcept
 	{
 		return reinterpret_cast<VECTOR2D&>(e[i][0]);
-	}		
-
-	static MATRIX Identity()
-	{
-		static const MATRIX T(1.0f, 0.0f, 0.0f, 1.0f);
-
-		return T;
 	}
 
-	static MATRIX Zer0()
+	[[nodiscard]] static MATRIX Identity() noexcept
 	{
-		static const MATRIX T(0.0f, 0.0f, 0.0f, 0.0f);
+		return MATRIX(1.0f, 0.0f, 0.0f, 1.0f);
+	}
 
-		return T;
+	[[nodiscard]] static MATRIX Zer0() noexcept
+	{
+		return MATRIX(0.0f, 0.0f, 0.0f, 0.0f);
 	}
 
 
-	MATRIX Tranpose() const
+	[[nodiscard]] MATRIX Tranpose() const noexcept
 	{
 		MATRIX T;
-
 		T.e11 = e11;
 		T.e21 = e12;
 		T.e12 = e21;
 		T.e22 = e22;
-
 		return T;
 	}
 
-	MATRIX operator * (const MATRIX& M) const 
+	[[nodiscard]] constexpr MATRIX operator * (const MATRIX& M) const noexcept
 	{
-		MATRIX T;
-
-		T.e11 = e11 * M.e11 + e12 * M.e21;
-		T.e21 = e21 * M.e11 + e22 * M.e21;
-		T.e12 = e11 * M.e12 + e12 * M.e22;
-		T.e22 = e21 * M.e12 + e22 * M.e22;
-		
-		return T;
+		return MATRIX(
+			e11 * M.e11 + e12 * M.e21,
+			e11 * M.e12 + e12 * M.e22,
+			e21 * M.e11 + e22 * M.e21,
+			e21 * M.e12 + e22 * M.e22);
 	}
 
-	MATRIX operator ^ (const MATRIX& M) const 
+	[[nodiscard]] constexpr MATRIX operator ^ (const MATRIX& M) const noexcept
 	{
-		MATRIX T;
-
-		T.e11 = e11 * M.e11 + e12 * M.e12;
-		T.e21 = e21 * M.e11 + e22 * M.e12;
-		T.e12 = e11 * M.e21 + e12 * M.e22;
-		T.e22 = e21 * M.e21 + e22 * M.e22;
-		
-		return T;
+		return MATRIX(
+			e11 * M.e11 + e12 * M.e12,
+			e11 * M.e21 + e12 * M.e22,
+			e21 * M.e11 + e22 * M.e12,
+			e21 * M.e21 + e22 * M.e22);
 	}
 
-	inline MATRIX operator * ( float s) const
+	[[nodiscard]] constexpr MATRIX operator * (float s) const noexcept
 	{
-		MATRIX T;
-
-		T.e11 = e11 * s;
-		T.e21 = e21 * s;
-		T.e12 = e12 * s;
-		T.e22 = e22 * s;
-		
-		return T;
+		return MATRIX(e11 * s, e12 * s, e21 * s, e22 * s);
 	}
 };
 
 ////////////////////////////////////FUNCTIONS////////////////////////////////////////////
-inline int Sign(float r)
+[[nodiscard]] constexpr int Sign(float r) noexcept
 {
-	if(r>0)
-		return 1;
-	else if(r<0)
-		return -1;
-	else
-		 return 0;
+	if (r > 0) return 1;
+	if (r < 0) return -1;
+	return 0;
 }
 
-float DegToRad(float fDeg);
-float RadToDeg(float fRad);
+[[nodiscard]] constexpr float DegToRad(float fDeg) noexcept { return fDeg / 180.0f * Pi; }
+[[nodiscard]] constexpr float RadToDeg(float fRad) noexcept { return fRad / Pi * 180.0f; }
 
-float Orient(POINT2D const &A, POINT2D const &B, POINT2D const &C);
-float Distance(VECTOR2D const &A, VECTOR2D const &B, VECTOR2D const &C);
+[[nodiscard]] float    Orient(POINT2D const &A, POINT2D const &B, POINT2D const &C) noexcept;
+[[nodiscard]] float    Distance(VECTOR2D const &A, VECTOR2D const &B, VECTOR2D const &C) noexcept;
 
-VECTOR2D operator-(VECTOR2D const &A, VECTOR2D const &B);
-VECTOR2D operator+(VECTOR2D const &A, VECTOR2D const &B);
-VECTOR2D operator*(VECTOR2D const &A, float B);
-VECTOR2D operator*(VECTOR2D const &A, MATRIX const &M);
-VECTOR2D operator^(VECTOR2D const &A, MATRIX const &M);
-VECTOR2D operator/(VECTOR2D const &A, float B);
+[[nodiscard]] constexpr VECTOR2D operator-(VECTOR2D const &A, VECTOR2D const &B) noexcept
+{
+	return { A.x - B.x, A.y - B.y };
+}
+[[nodiscard]] constexpr VECTOR2D operator+(VECTOR2D const &A, VECTOR2D const &B) noexcept
+{
+	return { A.x + B.x, A.y + B.y };
+}
+[[nodiscard]] constexpr VECTOR2D operator*(VECTOR2D const &A, float B) noexcept
+{
+	return { A.x * B, A.y * B };
+}
+[[nodiscard]] constexpr VECTOR2D operator/(VECTOR2D const &A, float B) noexcept
+{
+	return { A.x / B, A.y / B };
+}
 
-float DotProduct(VECTOR2D const &A, VECTOR2D const &B);
-float PerpDotProduct(VECTOR2D const &A, VECTOR2D const &B);
+[[nodiscard]] VECTOR2D operator*(VECTOR2D const &A, MATRIX const &M) noexcept;
+[[nodiscard]] VECTOR2D operator^(VECTOR2D const &A, MATRIX const &M) noexcept;
 
-VECTOR2D Projection(VECTOR2D const &A, const VECTOR2D &B);
+[[nodiscard]] constexpr float DotProduct(VECTOR2D const &A, VECTOR2D const &B) noexcept
+{
+	return A.x * B.x + A.y * B.y;
+}
+[[nodiscard]] constexpr float PerpDotProduct(VECTOR2D const &A, VECTOR2D const &B) noexcept
+{
+	return A.x * B.y - A.y * B.x;
+}
 
-VECTOR2D Perp(VECTOR2D const &A);
-VECTOR2D Normalize(VECTOR2D const &A);
+[[nodiscard]] VECTOR2D Projection(VECTOR2D const &A, VECTOR2D const &B) noexcept;
 
-float	Length(VECTOR2D const &A);
+[[nodiscard]] constexpr VECTOR2D Perp(VECTOR2D const &A) noexcept
+{
+	return { -A.y, A.x };
+}
+[[nodiscard]] VECTOR2D Normalize(VECTOR2D const &A) noexcept;
 
-void Rotate(LPVECTOR2D A, LPVECTOR2D B, float fAngle);
+[[nodiscard]] float Length(VECTOR2D const &A) noexcept;
+
+void Rotate(LPVECTOR2D A, LPVECTOR2D B, float fAngle) noexcept;
 
 void AddPoint(LPPOINT2D *point, float x, float y);
 

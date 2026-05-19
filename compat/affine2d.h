@@ -22,9 +22,9 @@ struct Affine2D {
     float ty         = 0.0f;
     bool  flip_x     = false;  // horizontal flip applied before scale/rotate
 
-    static Affine2D identity() { return {}; }
+    [[nodiscard]] static constexpr Affine2D identity() noexcept { return {}; }
 
-    static Affine2D translation(float x, float y)
+    [[nodiscard]] static constexpr Affine2D translation(float x, float y) noexcept
     {
         Affine2D a;
         a.tx = x;
@@ -42,7 +42,8 @@ struct Affine2D {
     // rotate gives the wrong sign on the sin components of the child's
     // translation, which is what made body-part positions diverge under
     // a flipped soldier with a tilted torso.
-    static Affine2D compose(const Affine2D& parent, const Affine2D& child)
+    [[nodiscard]] static Affine2D compose(const Affine2D& parent,
+                                          const Affine2D& child) noexcept
     {
         Affine2D r;
         r.scale     = parent.scale * child.scale;
