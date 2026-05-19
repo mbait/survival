@@ -1,0 +1,68 @@
+---
+# Style: tabs + Allman braces, west-aligned pointers/references.
+#
+# Matches the indentation convention of the legacy codebase and the
+# coding-style tradition of most open-source game engines in the
+# id-Tech / Quake / Unreal lineage (tabs for indentation, opening
+# braces on their own line, attached `Type*` pointers).
+#
+# clang-format >= 14 understands every option below.
+
+Language: Cpp
+BasedOnStyle: Microsoft
+
+ColumnLimit: 100
+IndentWidth: 4
+TabWidth: 4
+UseTab: ForIndentation
+ContinuationIndentWidth: 4
+ConstructorInitializerIndentWidth: 4
+AccessModifierOffset: -4
+
+BreakBeforeBraces: Allman
+AlignAfterOpenBracket: Align
+AlignConsecutiveAssignments: false
+AlignConsecutiveDeclarations: false
+AlignTrailingComments: true
+BinPackArguments: true
+BinPackParameters: true
+
+PointerAlignment: Left
+ReferenceAlignment: Left
+SpaceAfterCStyleCast: false
+SpaceBeforeCpp11BracedList: true
+
+AllowShortBlocksOnASingleLine: Empty
+AllowShortFunctionsOnASingleLine: Empty
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+AllowShortCaseLabelsOnASingleLine: false
+
+NamespaceIndentation: None
+FixNamespaceComments: true
+
+IncludeBlocks: Regroup
+SortIncludes: CaseSensitive
+IncludeCategories:
+  # 1. <SDL.h>, <SDL_*.h>
+  - Regex:    '^<SDL[A-Za-z0-9_]*\.h>$'
+    Priority: 1
+  # 2. other system <…> headers
+  - Regex:    '^<.*>$'
+    Priority: 2
+  # 3. our own "compat/…" shims
+  - Regex:    '^"compat/'
+    Priority: 3
+  # 4. low-level layer ("physics/", "graphics/")
+  - Regex:    '^"(physics|graphics)/'
+    Priority: 4
+  # 5. mid-layer ("platform/", "game/")
+  - Regex:    '^"(platform|game)/'
+    Priority: 5
+  # 6. project-root headers (gamecode.h, main.h, etc.)
+  - Regex:    '^"[A-Za-z0-9_]+\.h"$'
+    Priority: 6
+  # 7. anything else
+  - Regex:    '.*'
+    Priority: 7
+...
