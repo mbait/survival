@@ -66,11 +66,15 @@
 #define D3DX_PI 3.14159265358979323846f
 #endif
 
-// _HUGE — MSVC float-limits sentinel from <float.h>. Used in physics2D
-// as a "very large value" initial guess for shortest-distance scans.
-// On MSVC <float.h> already defines it; the #ifndef guard prevents a
-// redefinition warning.
-#ifndef _HUGE
+// _HUGE — MSVC float-limits sentinel used in physics2D as a "very large
+// value" initial guess for shortest-distance scans. The Win32 UCRT
+// declares it as `extern double const _HUGE;` in <float.h>; do NOT
+// redefine it as a macro on Windows or <corecrt_math.h>'s declaration
+// at line 78 expands to invalid syntax. On other platforms there's no
+// such symbol, so a macro to +infinity is the cleanest substitute.
+#ifdef _WIN32
+  #include <cfloat>  // gives us _HUGE as `extern double const`
+#else
   #include <limits>
   #define _HUGE (std::numeric_limits<double>::infinity())
 #endif
